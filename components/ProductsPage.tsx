@@ -1,0 +1,402 @@
+'use client'
+
+import { useState, useMemo, useEffect } from 'react'
+import { FiGrid, FiList, FiChevronRight, FiX, FiShoppingCart } from 'react-icons/fi'
+import { useCartStore, Product } from '@/store/cartStore'
+import { useProductStore } from '@/store/productStore'
+import { useCategoryStore } from '@/store/categoryStore'
+import Link from 'next/link'
+
+const brands = ['Momma & Me', 'BabySafe', 'TinyTot', 'LittleOne', 'PureBaby']
+const ageRanges = ['0-3 months', '3-6 months', '6-12 months', '1-2 years', '2-3 years']
+
+export default function ProductsPage() {
+  const { getAllProducts, initialize } = useProductStore()
+  const { getActiveCategories, initialize: initializeCategories } = useCategoryStore()
+  
+  useEffect(() => {
+    initialize()
+    initializeCategories()
+  }, [initialize, initializeCategories])
+  
+  const allProducts = getAllProducts()
+  const categories = getActiveCategories()
+  
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [priceRange, setPriceRange] = useState([0, 500])
+  const [selectedAges, setSelectedAges] = useState<string[]>([])
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([])
+  const [minRating, setMinRating] = useState(0)
+  const [sortBy, setSortBy] = useState('featured')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [showFilters, setShowFilters] = useState(false)
+  const [notification, setNotification] = useState<string | null>(null)
+  const addToCart = useCartStore((state) => state.addToCart)
+
+  const handleAddToCart = (product: Product) => {
+    addToCart(product)
+    setNotification(`Added ${product.name} to cart!`)
+    setTimeout(() => setNotification(null), 3000)
+  }
+
+  const filteredProducts = useMemo(() => {
+    let filtered = [...allProducts]
+
+    // Category filter
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(p => selectedCategories.includes(p.category))
+    }
+
+    // Price filter
+    filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1])
+
+    // Rating filter
+    if (minRating > 0) {
+      filtered = filtered.filter(p => p.rating >= minRating)
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'price-low':
+        filtered.sort((a, b) => a.price - b.price)
+        break
+      case 'price-high':
+        filtered.sort((a, b) => b.price - a.price)
+        break
+      case 'newest':
+        filtered.reverse()
+        break
+      case 'best-selling':
+        filtered.sort((a, b) => b.rating - a.rating)
+        break
+      default:
+        break
+    }
+
+    return filtered
+  }, [allProducts, selectedCategories, priceRange, minRating, sortBy])
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    )
+  }
+
+  const toggleAge = (age: string) => {
+    setSelectedAges(prev =>
+      prev.includes(age)
+        ? prev.filter(a => a !== age)
+        : [...prev, age]
+    )
+  }
+
+  const toggleBrand = (brand: string) => {
+    setSelectedBrands(prev =>
+      prev.includes(brand)
+        ? prev.filter(b => b !== brand)
+        : [...prev, brand]
+    )
+  }
+
+  const clearFilters = () => {
+    setSelectedCategories([])
+    setPriceRange([0, 500])
+    setSelectedAges([])
+    setSelectedBrands([])
+    setMinRating(0)
+  }
+
+  const FiltersSidebar = () => (
+    <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-purple">Filters</h3>
+        <button
+          onClick={clearFilters}
+          className="text-sm text-primary-pink-dark hover:underline"
+        >
+          Clear All
+        </button>
+      </div>
+
+      {/* Categories */}
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Categories</h4>
+        <div className="space-y-2">
+          {categories.map((cat) => (
+            <label key={cat.id} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedCategories.includes(cat.name)}
+                onChange={() => toggleCategory(cat.name)}
+                className="w-4 h-4 text-purple focus:ring-purple rounded"
+              />
+              <span className="text-sm text-gray-700">{cat.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Price Range */}
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Price Range</h4>
+        <div className="space-y-2">
+          <input
+            type="range"
+            min="0"
+            max="500"
+            value={priceRange[1]}
+            onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+            className="w-full"
+          />
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>₹{priceRange[0]}</span>
+            <span>₹{priceRange[1]}+</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Age Range */}
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Age Range</h4>
+        <div className="space-y-2">
+          {ageRanges.map((age) => (
+            <label key={age} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedAges.includes(age)}
+                onChange={() => toggleAge(age)}
+                className="w-4 h-4 text-purple focus:ring-purple rounded"
+              />
+              <span className="text-sm text-gray-700">{age}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Brand */}
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Brand</h4>
+        <div className="space-y-2">
+          {brands.map((brand) => (
+            <label key={brand} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedBrands.includes(brand)}
+                onChange={() => toggleBrand(brand)}
+                className="w-4 h-4 text-purple focus:ring-purple rounded"
+              />
+              <span className="text-sm text-gray-700">{brand}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Rating */}
+      <div>
+        <h4 className="font-semibold text-gray-700 mb-3">Rating</h4>
+        <div className="space-y-2">
+          {[5, 4, 3].map((rating) => (
+            <label key={rating} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="radio"
+                name="rating"
+                checked={minRating === rating}
+                onChange={() => setMinRating(rating)}
+                className="w-4 h-4 text-purple focus:ring-purple"
+              />
+              <span className="text-sm text-gray-700">
+                {rating} {rating === 5 ? 'stars' : '+ stars'}
+              </span>
+            </label>
+          ))}
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="radio"
+              name="rating"
+              checked={minRating === 0}
+              onChange={() => setMinRating(0)}
+              className="w-4 h-4 text-purple focus:ring-purple"
+            />
+            <span className="text-sm text-gray-700">All ratings</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Breadcrumb */}
+        <nav className="mb-6 text-sm">
+          <div className="flex items-center space-x-2 text-gray-600">
+            <Link href="/" className="hover:text-purple">Home</Link>
+            <FiChevronRight className="w-4 h-4" />
+            <span className="text-purple font-semibold">Products</span>
+          </div>
+        </nav>
+
+        {/* Top Bar */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-purple mb-2">Products</h1>
+            <p className="text-gray-600">Showing {filteredProducts.length} products</p>
+          </div>
+          <div className="flex items-center space-x-4 w-full md:w-auto">
+            {/* Mobile Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="md:hidden bg-white px-4 py-2 rounded-lg shadow-md flex items-center space-x-2"
+            >
+              <span>Filters</span>
+              {showFilters ? <FiX /> : <span>☰</span>}
+            </button>
+
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple"
+            >
+              <option value="featured">Sort by: Featured</option>
+              <option value="price-low">Price: Low-High</option>
+              <option value="price-high">Price: High-Low</option>
+              <option value="newest">Newest</option>
+              <option value="best-selling">Best Selling</option>
+            </select>
+
+            {/* View Toggle */}
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 ${viewMode === 'grid' ? 'bg-purple text-white' : 'bg-white text-gray-600'}`}
+              >
+                <FiGrid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 ${viewMode === 'list' ? 'bg-purple text-white' : 'bg-white text-gray-600'}`}
+              >
+                <FiList className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Filters Sidebar */}
+          <aside className={`w-full md:w-1/4 ${showFilters ? 'block' : 'hidden md:block'}`}>
+            <FiltersSidebar />
+          </aside>
+
+          {/* Products Grid */}
+          <main className="flex-1">
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredProducts.map((product) => (
+                  <ProductListCard key={product.id} product={product} onAddToCart={handleAddToCart} />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            <div className="mt-8 flex justify-center items-center space-x-2">
+              <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Previous</button>
+              {[1, 2, 3].map((page) => (
+                <button
+                  key={page}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-purple hover:text-white"
+                >
+                  {page}
+                </button>
+              ))}
+              <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Next</button>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      {/* Notification */}
+      {notification && (
+        <div className="fixed bottom-6 right-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-xl shadow-2xl z-50 animate-slide-up border-2 border-white/20 backdrop-blur-sm">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <FiShoppingCart className="w-5 h-5" />
+            </div>
+            <span className="font-bold text-lg">{notification}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: (p: Product) => void }) {
+  return (
+    <Link href={`/products/${product.id}`}>
+      <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all transform hover:scale-105 hover:shadow-lg cursor-pointer">
+        <div className="aspect-square relative">
+          <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+        </div>
+        <div className="p-4 space-y-2">
+          <h3 className="font-bold text-base text-purple">{product.name}</h3>
+          <div className="flex items-center">
+            {[...Array(5)].map((_, i) => (
+              <span key={i} className="text-yellow-400 text-sm">★</span>
+            ))}
+          </div>
+          <p className="text-xl font-bold text-primary-pink-dark">₹{product.price.toFixed(2)}</p>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              onAddToCart(product)
+            }}
+            className="w-full bg-primary-pink-dark hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function ProductListCard({ product, onAddToCart }: { product: Product; onAddToCart: (p: Product) => void }) {
+  return (
+    <Link href={`/products/${product.id}`}>
+      <div className="bg-white rounded-lg shadow-md p-4 flex flex-col md:flex-row gap-4 hover:shadow-lg transition-shadow cursor-pointer">
+        <div className="w-full md:w-32 h-32 flex-shrink-0">
+          <img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-lg text-purple mb-2">{product.name}</h3>
+          <div className="flex items-center mb-2">
+            {[...Array(5)].map((_, i) => (
+              <span key={i} className="text-yellow-400 text-sm">★</span>
+            ))}
+          </div>
+          <p className="text-gray-600 text-sm mb-2">{product.description}</p>
+          <p className="text-xl font-bold text-primary-pink-dark mb-2">₹{product.price.toFixed(2)}</p>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              onAddToCart(product)
+            }}
+            className="bg-primary-pink-dark hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
