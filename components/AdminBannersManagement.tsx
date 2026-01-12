@@ -221,24 +221,60 @@ export default function AdminBannersManagement() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Image URL <span className="text-red-500">*</span>
+                  Image <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="url"
-                  value={formData.image || ''}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple"
-                  placeholder="https://example.com/image.jpg"
-                />
-                {formData.image && (
-                  <img
-                    src={formData.image}
-                    alt="Preview"
-                    className="mt-2 w-full h-48 object-cover rounded-lg border border-gray-300"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none'
+                
+                {/* File Upload Option */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-600 mb-2">Upload from your computer:</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        // Check file size (max 5MB)
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert('Image size must be less than 5MB')
+                          return
+                        }
+                        // Convert to base64 data URL
+                        const reader = new FileReader()
+                        reader.onloadend = () => {
+                          setFormData({ ...formData, image: reader.result as string })
+                        }
+                        reader.readAsDataURL(file)
+                      }
                     }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple text-sm"
                   />
+                  <p className="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (Max 5MB)</p>
+                </div>
+
+                {/* Or Enter URL Option */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-600 mb-2">Or enter image URL:</label>
+                  <input
+                    type="url"
+                    value={formData.image?.startsWith('data:') ? '' : (formData.image || '')}
+                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+
+                {/* Image Preview */}
+                {formData.image && (
+                  <div className="mt-3">
+                    <img
+                      src={formData.image}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  </div>
                 )}
               </div>
 
