@@ -57,9 +57,13 @@ export default function AdminProductsManagement() {
   const [isDragging, setIsDragging] = useState(false)
   
   const handleFileUpload = (files: FileList | null) => {
-    if (!files || files.length === 0) return
+    if (!files || files.length === 0) {
+      console.log('No files selected')
+      return
+    }
     
     const fileArray = Array.from(files)
+    console.log(`Processing ${fileArray.length} file(s)`)
     
     // Check file sizes
     const oversizedFiles = fileArray.filter(f => f.size > 5 * 1024 * 1024)
@@ -72,18 +76,27 @@ export default function AdminProductsManagement() {
     const readers = fileArray.map(file => {
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string)
-        reader.onerror = reject
+        reader.onloadend = () => {
+          const result = reader.result as string
+          console.log('File read successfully:', file.name)
+          resolve(result)
+        }
+        reader.onerror = (error) => {
+          console.error('Error reading file:', file.name, error)
+          reject(error)
+        }
         reader.readAsDataURL(file)
       })
     })
     
     Promise.all(readers).then((base64Images) => {
-      setFormData({
-        ...formData,
-        images: [...formData.images, ...base64Images]
-      })
-    }).catch(() => {
+      console.log(`Successfully loaded ${base64Images.length} image(s)`)
+      setFormData((prev: any) => ({
+        ...prev,
+        images: [...(prev.images || []), ...base64Images]
+      }))
+    }).catch((error) => {
+      console.error('Error processing files:', error)
       alert('Error reading image files. Please try again.')
     })
   }
@@ -221,48 +234,64 @@ export default function AdminProductsManagement() {
                   Product Images *
                 </label>
                 
-                {/* Hidden File Input */}
-                <input
-                  type="file"
-                  id="product-image-upload"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    handleFileUpload(e.target.files)
-                    e.target.value = '' // Reset to allow selecting same file again
-                  }}
-                />
-                
-                {/* Upload Area with Drag and Drop */}
-                <label
-                  htmlFor="product-image-upload"
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    setIsDragging(true)
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault()
-                    setIsDragging(false)
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    setIsDragging(false)
-                    handleFileUpload(e.dataTransfer.files)
-                  }}
-                  className={`block border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
-                    isDragging
-                      ? 'border-purple bg-purple-100'
-                      : 'border-gray-300 bg-gray-50 hover:border-purple hover:bg-purple-50'
-                  }`}
-                >
-                  <FiUpload className={`w-12 h-12 mx-auto mb-2 ${isDragging ? 'text-purple' : 'text-gray-400'}`} />
-                  <p className="text-gray-600 font-medium">
-                    {isDragging ? 'Drop images here' : 'Click to upload or drag and drop'}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">JPG, PNG, WEBP (Max 5MB per image)</p>
-                  <p className="text-xs text-gray-400 mt-1">You can select multiple images</p>
-                </label>
+                {/* File Input - Made more accessible */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="product-image-upload"
+                    accept="image/*"
+                    multiple
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    onChange={(e) => {
+                      console.log('File input changed:', e.target.files?.length)
+                      handleFileUpload(e.target.files)
+                      // Reset to allow selecting same file again
+                      setTimeout(() => {
+                        if (e.target) e.target.value = ''
+                      }, 100)
+                    }}
+                  />
+                  
+                  {/* Upload Area with Drag and Drop */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragging(true)
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragging(false)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragging(false)
+                      console.log('Files dropped:', e.dataTransfer.files.length)
+                      handleFileUpload(e.dataTransfer.files)
+                    }}
+                    onClick={() => {
+                      // Trigger file input click
+                      const fileInput = document.getElementById('product-image-upload') as HTMLInputElement
+                      if (fileInput) {
+                        fileInput.click()
+                      }
+                    }}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                      isDragging
+                        ? 'border-purple bg-purple-100'
+                        : 'border-gray-300 bg-gray-50 hover:border-purple hover:bg-purple-50'
+                    }`}
+                  >
+                    <FiUpload className={`w-12 h-12 mx-auto mb-2 ${isDragging ? 'text-purple' : 'text-gray-400'}`} />
+                    <p className="text-gray-600 font-medium">
+                      {isDragging ? 'Drop images here' : 'Click to upload or drag and drop'}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">JPG, PNG, WEBP (Max 5MB per image)</p>
+                    <p className="text-xs text-gray-400 mt-1">You can select multiple images</p>
+                  </div>
+                </div>
                 
                 {/* Image Preview Grid */}
                 {formData.images.length > 0 && (
