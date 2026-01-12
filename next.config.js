@@ -9,11 +9,15 @@ const nextConfig = {
   // Enable standalone output for Docker deployments
   output: process.env.DOCKER_BUILD === 'true' ? 'standalone' : undefined,
   // Webpack configuration for path aliases
-  webpack: (config) => {
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(process.cwd(), '.'),
     }
+    config.resolve.modules = [
+      ...(config.resolve.modules || []),
+      path.resolve(process.cwd(), '.'),
+    ]
     return config
   },
   // Headers for production deployment
