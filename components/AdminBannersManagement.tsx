@@ -65,37 +65,57 @@ export default function AdminBannersManagement() {
       return
     }
 
-    if (editingId) {
-      updateBanner(editingId, formData)
-    } else {
-      addBanner(formData as Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>)
+    // Verify image is set
+    if (!formData.image || formData.image.trim() === '') {
+      alert('Please upload an image or enter an image URL')
+      return
     }
 
-    // Re-initialize to refresh the store
-    initialize()
-    
-    // Dispatch custom event to notify other components
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('bannerUpdated'))
-    }
+    try {
+      // Verify image is actually set
+      console.log('Saving banner with image:', formData.image ? (formData.image.substring(0, 50) + '...') : 'NO IMAGE')
+      
+      if (editingId) {
+        updateBanner(editingId, formData)
+        console.log('Banner updated:', editingId)
+      } else {
+        addBanner(formData as Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>)
+        console.log('Banner added')
+      }
 
-    setEditingId(null)
-    setIsAdding(false)
-    setFormData({
-      title: '',
-      subtitle: '',
-      image: '',
-      link: '',
-      type: 'hero',
-      position: banners.length + 1,
-      isActive: true,
-      buttonText: 'Shop Now',
-      startDate: '',
-      endDate: '',
-    })
-    
-    // Show success message
-    alert('Banner saved! Changes will appear on the homepage. Refresh the homepage to see updates.')
+      // Re-initialize to refresh the store
+      initialize()
+      
+      // Verify it was saved
+      const savedBanners = typeof window !== 'undefined' ? localStorage.getItem('momma-me-banners') : null
+      console.log('Banners saved to localStorage:', savedBanners ? 'Yes' : 'No')
+      
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('bannerUpdated'))
+      }
+
+      setEditingId(null)
+      setIsAdding(false)
+      setFormData({
+        title: '',
+        subtitle: '',
+        image: '',
+        link: '',
+        type: 'hero',
+        position: banners.length + 1,
+        isActive: true,
+        buttonText: 'Shop Now',
+        startDate: '',
+        endDate: '',
+      })
+      
+      // Show success message
+      alert('✅ Banner saved successfully! Changes will appear on the homepage. Refresh the homepage to see updates.')
+    } catch (error: any) {
+      alert(`❌ Error saving banner: ${error.message || 'Unknown error'}\n\nPlease try:\n- Using a smaller image\n- Compressing the image before uploading\n- Using an image URL instead`)
+      console.error('Error saving banner:', error)
+    }
   }
 
   const handleCancel = () => {
@@ -117,11 +137,17 @@ export default function AdminBannersManagement() {
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this banner?')) {
-      deleteBanner(id)
-      initialize()
-      // Dispatch custom event to notify other components
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('bannerUpdated'))
+      try {
+        deleteBanner(id)
+        initialize()
+        // Dispatch custom event to notify other components
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('bannerUpdated'))
+        }
+        alert('✅ Banner deleted successfully!')
+      } catch (error: any) {
+        alert(`❌ Error deleting banner: ${error.message || 'Unknown error'}`)
+        console.error('Error deleting banner:', error)
       }
     }
   }
@@ -129,11 +155,16 @@ export default function AdminBannersManagement() {
   const toggleActive = (id: string) => {
     const banner = banners.find(b => b.id === id)
     if (banner) {
-      updateBanner(id, { isActive: !banner.isActive })
-      initialize()
-      // Dispatch custom event to notify other components
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('bannerUpdated'))
+      try {
+        updateBanner(id, { isActive: !banner.isActive })
+        initialize()
+        // Dispatch custom event to notify other components
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('bannerUpdated'))
+        }
+      } catch (error: any) {
+        alert(`❌ Error updating banner: ${error.message || 'Unknown error'}`)
+        console.error('Error updating banner:', error)
       }
     }
   }
@@ -280,20 +311,69 @@ export default function AdminBannersManagement() {
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) {
+                        setIsProcessingImage(true)
                         // Check file size (max 5MB)
                         if (file.size > 5 * 1024 * 1024) {
                           alert('Image size must be less than 5MB')
                           e.target.value = '' // Reset input
+                          setIsProcessingImage(false)
                           return
                         }
-                        // Convert to base64 data URL
+                        
+                        // Compress image before converting to base64
                         const reader = new FileReader()
                         reader.onloadend = () => {
-                          setFormData({ ...formData, image: reader.result as string })
+                          const img = new Image()
+                          img.onload = () => {
+                            // Create canvas for compression
+                            const canvas = document.createElement('canvas')
+                            const MAX_WIDTH = 1920
+                            const MAX_HEIGHT = 1080
+                            let width = img.width
+                            let height = img.height
+                            
+                            // Calculate new dimensions
+                            if (width > height) {
+                              if (width > MAX_WIDTH) {
+                                height = (height * MAX_WIDTH) / width
+                                width = MAX_WIDTH
+                              }
+                            } else {
+                              if (height > MAX_HEIGHT) {
+                                width = (width * MAX_HEIGHT) / height
+                                height = MAX_HEIGHT
+                              }
+                            }
+                            
+                            canvas.width = width
+                            canvas.height = height
+                            
+                            // Draw and compress
+                            const ctx = canvas.getContext('2d')
+                            if (ctx) {
+                              ctx.drawImage(img, 0, 0, width, height)
+                              // Convert to base64 with quality compression (0.8 = 80% quality)
+                              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8)
+                              console.log('Image compressed. Original size:', file.size, 'bytes. Base64 length:', compressedBase64.length)
+                              setFormData({ ...formData, image: compressedBase64 })
+                              setIsProcessingImage(false)
+                            } else {
+                              // Fallback to original if canvas not available
+                              setFormData({ ...formData, image: reader.result as string })
+                              setIsProcessingImage(false)
+                            }
+                          }
+                          img.onerror = () => {
+                            // Fallback to original if image load fails
+                            setFormData({ ...formData, image: reader.result as string })
+                            setIsProcessingImage(false)
+                          }
+                          img.src = reader.result as string
                         }
                         reader.onerror = () => {
                           alert('Error reading file. Please try again.')
                           e.target.value = ''
+                          setIsProcessingImage(false)
                         }
                         reader.readAsDataURL(file)
                       }
@@ -301,6 +381,12 @@ export default function AdminBannersManagement() {
                     className="w-full px-4 py-3 border-2 border-purple rounded-lg focus:outline-none focus:ring-2 focus:ring-purple bg-white cursor-pointer hover:bg-purple-50 transition-colors"
                   />
                   <p className="text-xs text-gray-600 mt-2">Supported formats: JPG, PNG, WEBP | Maximum size: 5MB</p>
+                  {isProcessingImage && (
+                    <p className="text-xs text-blue-600 mt-1 animate-pulse">⏳ Processing and compressing image...</p>
+                  )}
+                  {formData.image && formData.image.startsWith('data:') && !isProcessingImage && (
+                    <p className="text-xs text-green-600 mt-1">✅ Image loaded and ready to save</p>
+                  )}
                 </div>
 
                 {/* Divider */}

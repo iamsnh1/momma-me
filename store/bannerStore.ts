@@ -119,12 +119,24 @@ const loadBanners = (): Banner[] => {
 }
 
 // Save banners to localStorage
-const saveBanners = (banners: Banner[]) => {
-  if (typeof window === 'undefined') return
+const saveBanners = (banners: Banner[]): boolean => {
+  if (typeof window === 'undefined') return false
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(banners))
-  } catch (e) {
+    const data = JSON.stringify(banners)
+    // Check if data is too large (localStorage limit is usually 5-10MB)
+    if (data.length > 4 * 1024 * 1024) { // 4MB limit to be safe
+      console.error('Banner data too large for localStorage. Consider using smaller images.')
+      return false
+    }
+    localStorage.setItem(STORAGE_KEY, data)
+    return true
+  } catch (e: any) {
     console.error('Error saving banners to localStorage:', e)
+    // Check if it's a quota exceeded error
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      console.error('localStorage quota exceeded. Please use smaller images or remove some banners.')
+    }
+    return false
   }
 }
 
@@ -156,22 +168,34 @@ export const useBannerStore = create<BannerStore>((set, get) => ({
       updatedAt: new Date().toISOString(),
     }
     const newBanners = [...get().banners, newBanner]
-    set({ banners: newBanners })
-    saveBanners(newBanners)
+    const saved = saveBanners(newBanners)
+    if (saved) {
+      set({ banners: newBanners })
+    } else {
+      throw new Error('Failed to save banner. Image may be too large. Please use a smaller image or compress it.')
+    }
   },
 
   updateBanner: (id, updatedBanner) => {
     const newBanners = get().banners.map(b =>
       b.id === id ? { ...b, ...updatedBanner, updatedAt: new Date().toISOString() } : b
     )
-    set({ banners: newBanners })
-    saveBanners(newBanners)
+    const saved = saveBanners(newBanners)
+    if (saved) {
+      set({ banners: newBanners })
+    } else {
+      throw new Error('Failed to save banner. Image may be too large. Please use a smaller image or compress it.')
+    }
   },
 
   deleteBanner: (id) => {
     const newBanners = get().banners.filter(b => b.id !== id)
-    set({ banners: newBanners })
-    saveBanners(newBanners)
+    const saved = saveBanners(newBanners)
+    if (saved) {
+      set({ banners: newBanners })
+    } else {
+      throw new Error('Failed to delete banner. Please try again.')
+    }
   },
 
   getBanner: (id) => {
