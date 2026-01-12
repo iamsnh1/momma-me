@@ -321,53 +321,77 @@ export default function AdminBannersManagement() {
                           return
                         }
                         
-                        // Compress image before converting to base64
+                        // Compress image before converting to base64 with automatic size adjustment
                         const reader = new FileReader()
                         reader.onloadend = () => {
                           const img = new Image()
                           img.onload = () => {
-                            // Create canvas for compression
-                            const canvas = document.createElement('canvas')
-                            const MAX_WIDTH = 1920
-                            const MAX_HEIGHT = 1080
-                            let width = img.width
-                            let height = img.height
-                            
-                            // Calculate new dimensions
-                            if (width > height) {
-                              if (width > MAX_WIDTH) {
-                                height = (height * MAX_WIDTH) / width
-                                width = MAX_WIDTH
+                            // Function to compress image with given quality and max size
+                            const compressImage = (maxWidth: number, maxHeight: number, quality: number): string => {
+                              const canvas = document.createElement('canvas')
+                              let width = img.width
+                              let height = img.height
+                              
+                              // Calculate new dimensions to fit within max
+                              if (width > height) {
+                                if (width > maxWidth) {
+                                  height = (height * maxWidth) / width
+                                  width = maxWidth
+                                }
+                              } else {
+                                if (height > maxHeight) {
+                                  width = (width * maxHeight) / height
+                                  height = maxHeight
+                                }
                               }
-                            } else {
-                              if (height > MAX_HEIGHT) {
-                                width = (width * MAX_HEIGHT) / height
-                                height = MAX_HEIGHT
-                              }
-                            }
-                            
-                            canvas.width = width
-                            canvas.height = height
-                            
-                            // Draw and compress
-                            const ctx = canvas.getContext('2d')
-                            if (ctx) {
+                              
+                              canvas.width = width
+                              canvas.height = height
+                              
+                              const ctx = canvas.getContext('2d')
+                              if (!ctx) return reader.result as string
+                              
                               ctx.drawImage(img, 0, 0, width, height)
-                              // Convert to base64 with quality compression (0.8 = 80% quality)
-                              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8)
-                              console.log('Image compressed. Original size:', file.size, 'bytes. Base64 length:', compressedBase64.length)
-                              setFormData({ ...formData, image: compressedBase64 })
-                              setIsProcessingImage(false)
-                            } else {
-                              // Fallback to original if canvas not available
-                              setFormData({ ...formData, image: reader.result as string })
-                              setIsProcessingImage(false)
+                              return canvas.toDataURL('image/jpeg', quality)
                             }
+                            
+                            // Try progressively smaller sizes and lower quality until it fits
+                            const MAX_BASE64_SIZE = 800 * 1024 // 800KB base64 (safe limit for localStorage)
+                            let compressedBase64 = ''
+                            let quality = 0.85
+                            let maxWidth = 1200
+                            let maxHeight = 800
+                            
+                            // Try different compression levels
+                            for (let attempt = 0; attempt < 5; attempt++) {
+                              compressedBase64 = compressImage(maxWidth, maxHeight, quality)
+                              
+                              // Check if size is acceptable
+                              if (compressedBase64.length < MAX_BASE64_SIZE) {
+                                break
+                              }
+                              
+                              // Reduce quality and size for next attempt
+                              quality = Math.max(0.5, quality - 0.1)
+                              maxWidth = Math.max(800, maxWidth - 200)
+                              maxHeight = Math.max(600, maxHeight - 150)
+                            }
+                            
+                            const finalSize = compressedBase64.length
+                            const sizeKB = (finalSize / 1024).toFixed(2)
+                            console.log(`Image compressed: ${file.size} bytes → ${finalSize} bytes (${sizeKB} KB), Quality: ${(quality * 100).toFixed(0)}%, Size: ${maxWidth}x${maxHeight}`)
+                            
+                            if (finalSize > MAX_BASE64_SIZE) {
+                              alert(`⚠️ Image is still large (${sizeKB} KB). It may not save properly. Please use a smaller image or image URL instead.`)
+                            }
+                            
+                            setFormData({ ...formData, image: compressedBase64 })
+                            setIsProcessingImage(false)
                           }
                           img.onerror = () => {
-                            // Fallback to original if image load fails
-                            setFormData({ ...formData, image: reader.result as string })
+                            alert('Error loading image. Please try a different image.')
                             setIsProcessingImage(false)
+                            e.target.value = ''
                           }
                           img.src = reader.result as string
                         }
@@ -381,12 +405,15 @@ export default function AdminBannersManagement() {
                     }}
                     className="w-full px-4 py-3 border-2 border-purple rounded-lg focus:outline-none focus:ring-2 focus:ring-purple bg-white cursor-pointer hover:bg-purple-50 transition-colors"
                   />
-                  <p className="text-xs text-gray-600 mt-2">Supported formats: JPG, PNG, WEBP | Maximum size: 5MB</p>
+                  <p className="text-xs text-gray-600 mt-2">Supported formats: JPG, PNG, WEBP | Maximum size: 5MB (auto-compressed)</p>
                   {isProcessingImage && (
-                    <p className="text-xs text-blue-600 mt-1 animate-pulse">⏳ Processing and compressing image...</p>
+                    <p className="text-xs text-blue-600 mt-1 animate-pulse">⏳ Processing and auto-compressing image to fit storage...</p>
                   )}
                   {formData.image && formData.image.startsWith('data:') && !isProcessingImage && (
-                    <p className="text-xs text-green-600 mt-1">✅ Image loaded and ready to save</p>
+                    <div className="mt-1">
+                      <p className="text-xs text-green-600">✅ Image loaded and auto-compressed</p>
+                      <p className="text-xs text-gray-500">Size: ~{((formData.image.length * 3) / 4 / 1024).toFixed(0)} KB (optimized for storage)</p>
+                    </div>
                   )}
                 </div>
 

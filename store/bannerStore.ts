@@ -118,16 +118,47 @@ const loadBanners = (): Banner[] => {
   return initialBanners
 }
 
-// Save banners to localStorage
+// Save banners to localStorage with automatic size management
 const saveBanners = (banners: Banner[]): boolean => {
   if (typeof window === 'undefined') return false
   try {
+    // Calculate total size
     const data = JSON.stringify(banners)
-    // Check if data is too large (localStorage limit is usually 5-10MB)
-    if (data.length > 4 * 1024 * 1024) { // 4MB limit to be safe
-      console.error('Banner data too large for localStorage. Consider using smaller images.')
+    const dataSize = data.length
+    const dataSizeMB = (dataSize / (1024 * 1024)).toFixed(2)
+    
+    console.log(`Saving banners: ${banners.length} banners, Total size: ${dataSizeMB} MB`)
+    
+    // Check if data is too large (localStorage limit is usually 5-10MB, we use 3MB to be safe)
+    const MAX_SIZE = 3 * 1024 * 1024 // 3MB limit to be safe
+    if (dataSize > MAX_SIZE) {
+      console.error(`Banner data too large: ${dataSizeMB} MB (limit: 3 MB)`)
+      
+      // Try to compress by removing oldest inactive banners
+      const activeBanners = banners.filter(b => b.isActive)
+      const inactiveBanners = banners.filter(b => !b.isActive).sort((a, b) => 
+        new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+      )
+      
+      // Remove oldest inactive banners until we're under limit
+      let compressedBanners = [...activeBanners, ...inactiveBanners]
+      let compressedData = JSON.stringify(compressedBanners)
+      
+      while (compressedData.length > MAX_SIZE && inactiveBanners.length > 0) {
+        inactiveBanners.shift() // Remove oldest inactive
+        compressedBanners = [...activeBanners, ...inactiveBanners]
+        compressedData = JSON.stringify(compressedBanners)
+      }
+      
+      if (compressedData.length <= MAX_SIZE) {
+        console.log(`Compressed by removing ${banners.length - compressedBanners.length} inactive banners`)
+        localStorage.setItem(STORAGE_KEY, compressedData)
+        return true
+      }
+      
       return false
     }
+    
     localStorage.setItem(STORAGE_KEY, data)
     return true
   } catch (e: any) {
@@ -135,6 +166,19 @@ const saveBanners = (banners: Banner[]): boolean => {
     // Check if it's a quota exceeded error
     if (e.name === 'QuotaExceededError' || e.code === 22) {
       console.error('localStorage quota exceeded. Please use smaller images or remove some banners.')
+      
+      // Try to save only active banners as fallback
+      try {
+        const activeBanners = banners.filter(b => b.isActive)
+        const fallbackData = JSON.stringify(activeBanners)
+        if (fallbackData.length < 3 * 1024 * 1024) {
+          localStorage.setItem(STORAGE_KEY, fallbackData)
+          console.log('Saved only active banners as fallback')
+          return true
+        }
+      } catch (fallbackError) {
+        console.error('Fallback save also failed:', fallbackError)
+      }
     }
     return false
   }
