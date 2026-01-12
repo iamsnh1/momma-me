@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -6,6 +8,14 @@ const nextConfig = {
   },
   // Enable standalone output for Docker deployments
   output: process.env.DOCKER_BUILD === 'true' ? 'standalone' : undefined,
+  // Webpack configuration for path aliases
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, '.'),
+    }
+    return config
+  },
   // Headers for production deployment
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production'
