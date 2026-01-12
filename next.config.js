@@ -10,13 +10,15 @@ const nextConfig = {
   output: process.env.DOCKER_BUILD === 'true' ? 'standalone' : undefined,
   // Webpack configuration for path aliases
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    const projectRoot = path.resolve(__dirname)
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.resolve(process.cwd(), '.'),
+      '@': projectRoot,
     }
     config.resolve.modules = [
+      path.resolve(projectRoot, 'node_modules'),
       ...(config.resolve.modules || []),
-      path.resolve(process.cwd(), '.'),
+      projectRoot,
     ]
     return config
   },
