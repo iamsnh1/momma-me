@@ -71,6 +71,14 @@ export default function AdminBannersManagement() {
       addBanner(formData as Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>)
     }
 
+    // Re-initialize to refresh the store
+    initialize()
+    
+    // Dispatch custom event to notify other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('bannerUpdated'))
+    }
+
     setEditingId(null)
     setIsAdding(false)
     setFormData({
@@ -85,6 +93,9 @@ export default function AdminBannersManagement() {
       startDate: '',
       endDate: '',
     })
+    
+    // Show success message
+    alert('Banner saved! Changes will appear on the homepage. Refresh the homepage to see updates.')
   }
 
   const handleCancel = () => {
@@ -107,6 +118,11 @@ export default function AdminBannersManagement() {
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this banner?')) {
       deleteBanner(id)
+      initialize()
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('bannerUpdated'))
+      }
     }
   }
 
@@ -114,6 +130,11 @@ export default function AdminBannersManagement() {
     const banner = banners.find(b => b.id === id)
     if (banner) {
       updateBanner(id, { isActive: !banner.isActive })
+      initialize()
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('bannerUpdated'))
+      }
     }
   }
 
@@ -133,6 +154,12 @@ export default function AdminBannersManagement() {
       updateBanner(id, { position: nextBanner.position })
       updateBanner(nextBanner.id, { position: banner.position })
     }
+    
+    initialize()
+    // Dispatch custom event to notify other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('bannerUpdated'))
+    }
   }
 
   return (
@@ -142,14 +169,32 @@ export default function AdminBannersManagement() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Banners & Advertisements</h1>
           <p className="text-gray-600 mt-1">Manage homepage banners and promotional content</p>
+          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 font-semibold mb-1">📍 Banner Locations:</p>
+            <ul className="text-xs text-blue-700 space-y-1">
+              <li>• <strong>Hero:</strong> Main carousel at top of homepage</li>
+              <li>• <strong>Boutique:</strong> "Premium Boutiques" section on homepage</li>
+              <li>• <strong>Promotional/Advertisement:</strong> Other sections</li>
+            </ul>
+            <p className="text-xs text-blue-600 mt-2">💡 Tip: Refresh the homepage after saving to see changes</p>
+          </div>
         </div>
-        <button
-          onClick={handleAdd}
-          className="bg-primary-pink-dark hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2 transition-colors"
-        >
-          <FiPlus className="w-5 h-5" />
-          <span>Add New Banner</span>
-        </button>
+        <div className="flex flex-col items-end space-y-2">
+          <button
+            onClick={handleAdd}
+            className="bg-primary-pink-dark hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center space-x-2 transition-colors"
+          >
+            <FiPlus className="w-5 h-5" />
+            <span>Add New Banner</span>
+          </button>
+          <a
+            href="/"
+            target="_blank"
+            className="text-sm text-purple hover:text-purple-dark font-semibold underline"
+          >
+            View Homepage →
+          </a>
+        </div>
       </div>
 
       {/* Filters */}
@@ -319,11 +364,17 @@ export default function AdminBannersManagement() {
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as Banner['type'] })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple"
                 >
-                  <option value="hero">Hero (Carousel)</option>
-                  <option value="promotional">Promotional</option>
-                  <option value="boutique">Boutique</option>
-                  <option value="advertisement">Advertisement</option>
+                  <option value="hero">Hero (Carousel) - Top of homepage</option>
+                  <option value="boutique">Boutique - Premium Boutiques section</option>
+                  <option value="promotional">Promotional - Promotional section</option>
+                  <option value="advertisement">Advertisement - Advertisement section</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.type === 'hero' && '📍 Appears in the main carousel at the top of the homepage'}
+                  {formData.type === 'boutique' && '📍 Appears in the "Premium Boutiques" section on homepage'}
+                  {formData.type === 'promotional' && '📍 Appears in promotional sections'}
+                  {formData.type === 'advertisement' && '📍 Appears in advertisement sections'}
+                </p>
               </div>
 
               <div>
@@ -463,9 +514,17 @@ export default function AdminBannersManagement() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {banner.type}
-                      </span>
+                      <div className="space-y-1">
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          {banner.type}
+                        </span>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {banner.type === 'hero' && '📍 Top carousel on homepage'}
+                          {banner.type === 'boutique' && '📍 Premium Boutiques section'}
+                          {banner.type === 'promotional' && '📍 Promotional section'}
+                          {banner.type === 'advertisement' && '📍 Advertisement section'}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">

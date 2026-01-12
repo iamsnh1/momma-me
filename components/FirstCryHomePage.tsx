@@ -31,6 +31,30 @@ export default function FirstCryHomePage() {
     initializeCategories()
   }, [initialize, initializeBanners, initializeBadges, initializeCategories])
   
+  // Re-initialize banners when they change (listen to storage events)
+  useEffect(() => {
+    if (!mounted) return
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'momma-me-banners') {
+        initializeBanners()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also listen for custom event from same window
+    const handleBannerUpdate = () => {
+      initializeBanners()
+    }
+    window.addEventListener('bannerUpdated', handleBannerUpdate)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('bannerUpdated', handleBannerUpdate)
+    }
+  }, [mounted, initializeBanners])
+  
   // Get boutique banners for Premium Boutiques section
   const boutiqueBanners = mounted ? getBannersByType('boutique').sort((a, b) => a.position - b.position).slice(0, 3) : []
   
