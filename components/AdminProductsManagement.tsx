@@ -53,6 +53,40 @@ export default function AdminProductsManagement() {
     slug: '',
     tags: []
   })
+  
+  const [isDragging, setIsDragging] = useState(false)
+  
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    
+    const fileArray = Array.from(files)
+    
+    // Check file sizes
+    const oversizedFiles = fileArray.filter(f => f.size > 5 * 1024 * 1024)
+    if (oversizedFiles.length > 0) {
+      alert(`Some images exceed 5MB limit. Please select smaller files.`)
+      return
+    }
+    
+    // Read all files
+    const readers = fileArray.map(file => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+    })
+    
+    Promise.all(readers).then((base64Images) => {
+      setFormData({
+        ...formData,
+        images: [...formData.images, ...base64Images]
+      })
+    }).catch(() => {
+      alert('Error reading image files. Please try again.')
+    })
+  }
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -186,17 +220,66 @@ export default function AdminProductsManagement() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Product Images *
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple transition-colors cursor-pointer">
-                  <FiUpload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">Click to upload or drag and drop</p>
-                  <p className="text-sm text-gray-500 mt-1">JPG, PNG, WEBP (Max 5MB)</p>
-                </div>
+                
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  id="product-image-upload"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    handleFileUpload(e.target.files)
+                    e.target.value = '' // Reset to allow selecting same file again
+                  }}
+                />
+                
+                {/* Upload Area with Drag and Drop */}
+                <label
+                  htmlFor="product-image-upload"
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setIsDragging(true)
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault()
+                    setIsDragging(false)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setIsDragging(false)
+                    handleFileUpload(e.dataTransfer.files)
+                  }}
+                  className={`block border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                    isDragging
+                      ? 'border-purple bg-purple-100'
+                      : 'border-gray-300 bg-gray-50 hover:border-purple hover:bg-purple-50'
+                  }`}
+                >
+                  <FiUpload className={`w-12 h-12 mx-auto mb-2 ${isDragging ? 'text-purple' : 'text-gray-400'}`} />
+                  <p className="text-gray-600 font-medium">
+                    {isDragging ? 'Drop images here' : 'Click to upload or drag and drop'}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">JPG, PNG, WEBP (Max 5MB per image)</p>
+                  <p className="text-xs text-gray-400 mt-1">You can select multiple images</p>
+                </label>
+                
+                {/* Image Preview Grid */}
                 {formData.images.length > 0 && (
                   <div className="grid grid-cols-5 gap-2 mt-4">
                     {formData.images.map((img: string, i: number) => (
                       <div key={i} className="relative aspect-square rounded-lg overflow-hidden border-2 border-purple">
                         <img src={img} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
-                        <button className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1">
+                        <button
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              images: formData.images.filter((_: string, idx: number) => idx !== i)
+                            })
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors"
+                          title="Remove image"
+                        >
                           <FiX className="w-3 h-3" />
                         </button>
                       </div>
