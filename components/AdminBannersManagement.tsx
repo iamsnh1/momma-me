@@ -15,6 +15,7 @@ export default function AdminBannersManagement() {
   const [isAdding, setIsAdding] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
+  const [isProcessingImage, setIsProcessingImage] = useState(false)
   
   const [formData, setFormData] = useState<Partial<Banner>>({
     title: '',
