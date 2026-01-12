@@ -10,11 +10,6 @@ services:
     build_command: npm ci && npm run build
     run_command: npm start
     environment_slug: node-js
-    envs:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_TELEMETRY_DISABLED
-        value: "1"
     instance_count: 1
     instance_size_slug: basic-xxs
     http_port: 3000
@@ -25,4 +20,5 @@ services:
         value: production
       - key: PORT
         value: "3000"
-
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
