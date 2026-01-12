@@ -4,7 +4,7 @@ services:
   - name: web
     source_dir: /
     github:
-      repo: your-username/your-repo-name
+      repo: iamsnh1/momma-me
       branch: main
       deploy_on_push: true
     build_command: npm run build
