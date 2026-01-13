@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { FiShoppingCart, FiMenu, FiX } from 'react-icons/fi'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { FiShoppingCart, FiMenu, FiX, FiSearch } from 'react-icons/fi'
 import { useCartStore } from '@/store/cartStore'
 import { useCategoryStore } from '@/store/categoryStore'
+import { useProductStore } from '@/store/productStore'
+import { Product } from '@/store/cartStore'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -12,8 +14,12 @@ export default function Navigation() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
+  const searchRef = useRef<HTMLDivElement>(null)
   const totalItems = useCartStore((state) => state.getTotalItems())
   const { getActiveCategories, initialize: initializeCategories } = useCategoryStore()
+  const { getAllProducts, initialize: initializeProducts } = useProductStore()
   const pathname = usePathname()
   const router = useRouter()
   const isHome = pathname === '/'
@@ -21,9 +27,44 @@ export default function Navigation() {
   useEffect(() => {
     setMounted(true)
     initializeCategories()
-  }, [initializeCategories])
+    initializeProducts()
+  }, [initializeCategories, initializeProducts])
   
   const categories = mounted ? getActiveCategories() : []
+  const allProducts = mounted ? getAllProducts() : []
+  
+  // Filter products for suggestions
+  const suggestions = useMemo(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      return []
+    }
+    
+    const query = searchQuery.toLowerCase().trim()
+    const filtered = allProducts.filter(p => {
+      const nameMatch = p.name?.toLowerCase().includes(query) || false
+      const descMatch = p.description?.toLowerCase().includes(query) || false
+      const categoryMatch = p.category?.toLowerCase().includes(query) || false
+      return nameMatch || descMatch || categoryMatch
+    })
+    
+    // Return top 5 suggestions
+    return filtered.slice(0, 5)
+  }, [searchQuery, allProducts])
+  
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+        setSelectedSuggestionIndex(-1)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   useEffect(() => {
     if (isMenuOpen) {
@@ -36,16 +77,17 @@ export default function Navigation() {
     }
   }, [isMenuOpen])
 
-  const performSearch = () => {
-    const trimmedQuery = searchQuery.trim()
-    if (!trimmedQuery) {
-      alert('Please enter a search term')
+  const performSearch = (query?: string) => {
+    const searchTerm = query || searchQuery.trim()
+    if (!searchTerm) {
       return
     }
     
+    setShowSuggestions(false)
+    setSelectedSuggestionIndex(-1)
+    
     if (typeof window !== 'undefined') {
-      const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
-      // Force navigation
+      const searchUrl = `/products?search=${encodeURIComponent(searchTerm)}`
       window.location.href = searchUrl
     }
   }
@@ -56,11 +98,44 @@ export default function Navigation() {
     performSearch()
   }
 
+  const handleSuggestionClick = (product: Product) => {
+    performSearch(product.name)
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchQuery(value)
+    setShowSuggestions(value.trim().length >= 2)
+    setSelectedSuggestionIndex(-1)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
       e.stopPropagation()
-      performSearch()
+      if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+        performSearch(suggestions[selectedSuggestionIndex].name)
+      } else {
+        performSearch()
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedSuggestionIndex(prev => 
+        prev < suggestions.length - 1 ? prev + 1 : prev
+      )
+      setShowSuggestions(true)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1)
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false)
+      setSelectedSuggestionIndex(-1)
+    }
+  }
+
+  const handleInputFocus = () => {
+    if (searchQuery.trim().length >= 2) {
+      setShowSuggestions(true)
     }
   }
 
@@ -83,16 +158,60 @@ export default function Navigation() {
               </span>
             </Link>
             
-            {/* Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-2xl mx-8">
-              <input
-                type="text"
-                placeholder="Search for products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full px-5 py-3 border-2 border-gray-300 rounded-l-xl focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20 transition-all shadow-sm"
-              />
+            {/* Search Bar with Suggestions */}
+            <div ref={searchRef} className="hidden md:flex flex-1 max-w-2xl mx-8 relative">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="Search for products..."
+                  value={searchQuery}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={handleInputFocus}
+                  className="w-full px-5 py-3 border-2 border-gray-300 rounded-l-xl focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20 transition-all shadow-sm"
+                />
+                {/* Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-purple/20 rounded-xl shadow-2xl z-50 max-h-96 overflow-y-auto">
+                    {suggestions.map((product, index) => (
+                      <div
+                        key={product.id}
+                        onClick={() => handleSuggestionClick(product)}
+                        className={`px-4 py-3 cursor-pointer hover:bg-purple/10 transition-colors border-b border-gray-100 last:border-b-0 ${
+                          index === selectedSuggestionIndex ? 'bg-purple/20' : ''
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <img 
+                            src={product.image} 
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded-lg"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 truncate">
+                              {product.name}
+                            </div>
+                            <div className="text-sm text-gray-600 truncate">
+                              {product.description || product.category}
+                            </div>
+                            <div className="text-sm font-bold text-purple mt-1">
+                              ₹{product.salePrice && product.salePrice < (product.originalPrice || product.price) 
+                                ? product.salePrice.toFixed(2) 
+                                : product.price.toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div 
+                      onClick={() => performSearch()}
+                      className="px-4 py-3 bg-purple/10 hover:bg-purple/20 cursor-pointer text-center font-semibold text-purple border-t border-gray-200"
+                    >
+                      View all results for "{searchQuery}"
+                    </div>
+                  </div>
+                )}
+              </div>
               <button 
                 type="button"
                 onClick={handleSearchClick}
@@ -200,24 +319,65 @@ export default function Navigation() {
         <div className="fixed inset-0 bg-white z-50 md:hidden pt-24 px-4">
           <div className="flex flex-col space-y-4">
             {/* Mobile Search Bar */}
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20"
-              />
-              <button 
-                type="button"
-                onClick={handleSearchClick}
-                onMouseDown={(e) => e.preventDefault()}
-                className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold cursor-pointer active:scale-95"
-                aria-label="Search products"
-              >
-                🔍
-              </button>
+            <div className="mb-4">
+              <div className="flex gap-2 relative">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    onFocus={handleInputFocus}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20"
+                  />
+                  {/* Mobile Suggestions Dropdown */}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-purple/20 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto">
+                      {suggestions.map((product, index) => (
+                        <div
+                          key={product.id}
+                          onClick={() => handleSuggestionClick(product)}
+                          className={`px-3 py-2 cursor-pointer hover:bg-purple/10 transition-colors border-b border-gray-100 last:border-b-0 ${
+                            index === selectedSuggestionIndex ? 'bg-purple/20' : ''
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <img 
+                              src={product.image} 
+                              alt={product.name}
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-sm text-gray-900 truncate">
+                                {product.name}
+                              </div>
+                              <div className="text-xs text-gray-600 truncate">
+                                {product.description || product.category}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div 
+                        onClick={() => performSearch()}
+                        className="px-3 py-2 bg-purple/10 hover:bg-purple/20 cursor-pointer text-center text-sm font-semibold text-purple border-t border-gray-200"
+                      >
+                        View all results
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button 
+                  type="button"
+                  onClick={handleSearchClick}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold cursor-pointer active:scale-95"
+                  aria-label="Search products"
+                >
+                  🔍
+                </button>
+              </div>
             </div>
             <Link href="/" className="text-gray-700 hover:text-purple transition-colors py-2" onClick={() => setIsMenuOpen(false)}>Home</Link>
             <Link href="/products" className="text-gray-700 font-semibold py-2" onClick={() => setIsMenuOpen(false)}>Products</Link>
