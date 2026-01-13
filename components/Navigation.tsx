@@ -36,20 +36,28 @@ export default function Navigation() {
     }
   }, [isMenuOpen])
 
-  const handleSearch = (e?: React.FormEvent) => {
+  const handleSearch = (e?: React.FormEvent | React.MouseEvent) => {
     e?.preventDefault()
+    e?.stopPropagation()
     const trimmedQuery = searchQuery.trim()
-    if (trimmedQuery) {
-      const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
-      router.push(searchUrl)
-      setSearchQuery('')
-      setIsMenuOpen(false) // Close mobile menu after search
+    if (trimmedQuery && router) {
+      try {
+        const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
+        router.push(searchUrl)
+        setSearchQuery('')
+        setIsMenuOpen(false) // Close mobile menu after search
+      } catch (error) {
+        console.error('Search navigation error:', error)
+        // Fallback to window.location if router fails
+        window.location.href = `/products?search=${encodeURIComponent(trimmedQuery)}`
+      }
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
+      e.stopPropagation()
       handleSearch(e)
     }
   }
@@ -85,6 +93,7 @@ export default function Navigation() {
               />
               <button 
                 type="submit"
+                onClick={handleSearch}
                 className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold"
               >
                 🔍
@@ -198,6 +207,7 @@ export default function Navigation() {
               />
               <button 
                 type="submit"
+                onClick={handleSearch}
                 className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold"
               >
                 🔍
