@@ -100,6 +100,12 @@ const initialBanners: Banner[] = [
   },
 ]
 
+// Track if we've ever saved data to localStorage
+const hasSavedBanners = (): boolean => {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(`${STORAGE_KEY}_initialized`) === 'true'
+}
+
 // Load banners from localStorage or use initial banners
 const loadBanners = (): Banner[] => {
   if (typeof window === 'undefined') return initialBanners
@@ -111,11 +117,18 @@ const loadBanners = (): Banner[] => {
         return parsed
       }
     }
+    // Only return initial banners if we've NEVER saved data before
+    if (!hasSavedBanners()) {
+      return initialBanners
+    }
+    return []
   } catch (e) {
     console.error('Error loading banners from localStorage:', e)
+    if (hasSavedBanners()) {
+      return []
+    }
+    return initialBanners
   }
-  // Return initial banners if localStorage is empty
-  return initialBanners
 }
 
 // Save banners to localStorage with automatic size management
@@ -160,6 +173,8 @@ const saveBanners = (banners: Banner[]): boolean => {
     }
     
     localStorage.setItem(STORAGE_KEY, data)
+    localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
+    console.log(`✅ Saved ${banners.length} banners to localStorage`)
     return true
   } catch (e: any) {
     console.error('Error saving banners to localStorage:', e)
@@ -200,8 +215,16 @@ export const useBannerStore = create<BannerStore>((set, get) => ({
   banners: loadBanners(),
 
   initialize: () => {
-    const loaded = loadBanners()
-    set({ banners: loaded })
+    const currentBanners = get().banners
+    if (currentBanners.length === 0) {
+      const loaded = loadBanners()
+      set({ banners: loaded })
+    } else {
+      const loaded = loadBanners()
+      if (loaded.length > 0) {
+        set({ banners: loaded })
+      }
+    }
   },
 
   addBanner: (bannerData) => {

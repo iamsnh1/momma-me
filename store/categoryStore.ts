@@ -13,6 +13,12 @@ export interface Category {
 
 const STORAGE_KEY = 'momma-me-categories'
 
+// Track if we've ever saved data to localStorage
+const hasSavedCategories = (): boolean => {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(`${STORAGE_KEY}_initialized`) === 'true'
+}
+
 // Load categories from localStorage or use initial categories
 const loadCategories = (): Category[] => {
   if (typeof window === 'undefined') return initialCategories
@@ -24,10 +30,18 @@ const loadCategories = (): Category[] => {
         return parsed
       }
     }
+    // Only return initial categories if we've NEVER saved data before
+    if (!hasSavedCategories()) {
+      return initialCategories
+    }
+    return []
   } catch (e) {
     console.error('Error loading categories from localStorage:', e)
+    if (hasSavedCategories()) {
+      return []
+    }
+    return initialCategories
   }
-  return initialCategories
 }
 
 // Save categories to localStorage
@@ -35,6 +49,8 @@ const saveCategories = (categories: Category[]) => {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(categories))
+    localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
+    console.log(`✅ Saved ${categories.length} categories to localStorage`)
   } catch (e) {
     console.error('Error saving categories to localStorage:', e)
   }
@@ -56,8 +72,16 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
   categories: loadCategories(),
 
   initialize: () => {
-    const loaded = loadCategories()
-    set({ categories: loaded })
+    const currentCategories = get().categories
+    if (currentCategories.length === 0) {
+      const loaded = loadCategories()
+      set({ categories: loaded })
+    } else {
+      const loaded = loadCategories()
+      if (loaded.length > 0) {
+        set({ categories: loaded })
+      }
+    }
   },
 
   addCategory: (category) => {
