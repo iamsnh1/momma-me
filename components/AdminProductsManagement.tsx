@@ -155,6 +155,10 @@ export default function AdminProductsManagement() {
       addProduct(newProduct)
       setIsAdding(false)
     }
+    // Dispatch event to refresh frontend
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('productsUpdated'))
+    }
     resetForm()
   }
 
@@ -842,6 +846,10 @@ export default function AdminProductsManagement() {
                         onClick={() => {
                           if (confirm('Are you sure you want to delete this product?')) {
                             deleteProduct(product.id)
+                            // Dispatch event to refresh frontend
+                            if (typeof window !== 'undefined') {
+                              window.dispatchEvent(new Event('productsUpdated'))
+                            }
                           }
                         }}
                         className="text-red-600 hover:text-red-800"

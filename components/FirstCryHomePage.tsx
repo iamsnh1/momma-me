@@ -31,29 +31,44 @@ export default function FirstCryHomePage() {
     initializeCategories()
   }, [initialize, initializeBanners, initializeBadges, initializeCategories])
   
-  // Re-initialize banners when they change (listen to storage events)
+  // Re-initialize stores when they change (listen to storage events and custom events)
   useEffect(() => {
     if (!mounted) return
     
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'momma-me-banners') {
         initializeBanners()
+      } else if (e.key === 'momma-me-products') {
+        initialize()
+      } else if (e.key === 'momma-me-categories') {
+        initializeCategories()
       }
     }
     
     window.addEventListener('storage', handleStorageChange)
     
-    // Also listen for custom event from same window
+    // Listen for custom events from same window (admin panel)
     const handleBannerUpdate = () => {
       initializeBanners()
     }
+    const handleProductsUpdate = () => {
+      initialize()
+    }
+    const handleCategoriesUpdate = () => {
+      initializeCategories()
+    }
+    
     window.addEventListener('bannerUpdated', handleBannerUpdate)
+    window.addEventListener('productsUpdated', handleProductsUpdate)
+    window.addEventListener('categoriesUpdated', handleCategoriesUpdate)
     
     return () => {
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('bannerUpdated', handleBannerUpdate)
+      window.removeEventListener('productsUpdated', handleProductsUpdate)
+      window.removeEventListener('categoriesUpdated', handleCategoriesUpdate)
     }
-  }, [mounted, initializeBanners])
+  }, [mounted, initializeBanners, initialize, initializeCategories])
   
   // Get boutique banners for Premium Boutiques section
   const boutiqueBanners = mounted ? getBannersByType('boutique').sort((a, b) => a.position - b.position).slice(0, 3) : []

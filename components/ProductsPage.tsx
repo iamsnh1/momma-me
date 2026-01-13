@@ -20,6 +20,24 @@ export default function ProductsPage() {
     initialize()
     initializeCategories()
   }, [initialize, initializeCategories])
+
+  // Listen for updates from admin panel
+  useEffect(() => {
+    const handleProductsUpdate = () => {
+      initialize()
+    }
+    const handleCategoriesUpdate = () => {
+      initializeCategories()
+    }
+    
+    window.addEventListener('productsUpdated', handleProductsUpdate)
+    window.addEventListener('categoriesUpdated', handleCategoriesUpdate)
+    
+    return () => {
+      window.removeEventListener('productsUpdated', handleProductsUpdate)
+      window.removeEventListener('categoriesUpdated', handleCategoriesUpdate)
+    }
+  }, [initialize, initializeCategories])
   
   const allProducts = getAllProducts()
   const categories = getActiveCategories()

@@ -62,6 +62,10 @@ export default function AdminCategoriesManagement() {
       addCategory(newCategory)
       setIsAdding(false)
     }
+    // Dispatch event to refresh frontend
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('categoriesUpdated'))
+    }
     resetForm()
   }
 
@@ -87,6 +91,10 @@ export default function AdminCategoriesManagement() {
     
     if (confirm('Are you sure you want to delete this category?')) {
       deleteCategory(id)
+      // Dispatch event to refresh frontend
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('categoriesUpdated'))
+      }
     }
   }
 
@@ -94,6 +102,10 @@ export default function AdminCategoriesManagement() {
     const category = categories.find(c => c.id === id)
     if (category) {
       updateCategory(id, { active: !category.active })
+      // Dispatch event to refresh frontend
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('categoriesUpdated'))
+      }
     }
   }
 
@@ -112,6 +124,10 @@ export default function AdminCategoriesManagement() {
       const nextCategory = sortedCategories[currentIndex + 1]
       updateCategory(id, { displayOrder: nextCategory.displayOrder })
       updateCategory(nextCategory.id, { displayOrder: category.displayOrder })
+    }
+    // Dispatch event to refresh frontend
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('categoriesUpdated'))
     }
   }
 

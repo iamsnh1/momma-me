@@ -12,6 +12,19 @@ export default function ProductDetail({ productId }: { productId: string }) {
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  // Listen for updates from admin panel
+  useEffect(() => {
+    const handleProductsUpdate = () => {
+      initialize()
+    }
+    
+    window.addEventListener('productsUpdated', handleProductsUpdate)
+    
+    return () => {
+      window.removeEventListener('productsUpdated', handleProductsUpdate)
+    }
+  }, [initialize])
   
   const product = getProduct(productId) || getAllProducts()[0]
   const allProducts = getAllProducts()
