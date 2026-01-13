@@ -43,12 +43,15 @@ export default function Navigation() {
     }
     
     const trimmedQuery = searchQuery.trim()
+    console.log('Search button clicked, query:', trimmedQuery)
     
     if (!trimmedQuery) {
+      console.log('Empty query, not searching')
       return
     }
     
     const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
+    console.log('Navigating to:', searchUrl)
     
     // Always use window.location for reliable navigation
     // This ensures the page refreshes and search params are read correctly
@@ -85,7 +88,7 @@ export default function Navigation() {
             </Link>
             
             {/* Search Bar */}
-            <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-2xl mx-8">
+            <div className="hidden md:flex flex-1 max-w-2xl mx-8">
               <input
                 type="text"
                 placeholder="Search for a Category, Brand or Product"
@@ -95,13 +98,13 @@ export default function Navigation() {
                 className="w-full px-5 py-3 border-2 border-gray-300 rounded-l-xl focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20 transition-all shadow-sm"
               />
               <button 
-                type="submit"
+                type="button"
                 onClick={handleSearch}
-                className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold"
+                className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold cursor-pointer"
               >
                 🔍
               </button>
-            </form>
+            </div>
           </div>
 
           {/* Right Side Links */}
@@ -199,7 +202,7 @@ export default function Navigation() {
         <div className="fixed inset-0 bg-white z-50 md:hidden pt-24 px-4">
           <div className="flex flex-col space-y-4">
             {/* Mobile Search Bar */}
-            <form onSubmit={handleSearch} className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-4">
               <input
                 type="text"
                 placeholder="Search products..."
@@ -209,13 +212,13 @@ export default function Navigation() {
                 className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20"
               />
               <button 
-                type="submit"
+                type="button"
                 onClick={handleSearch}
-                className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold"
+                className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold cursor-pointer"
               >
                 🔍
               </button>
-            </form>
+            </div>
             <Link href="/" className="text-gray-700 hover:text-purple transition-colors py-2" onClick={() => setIsMenuOpen(false)}>Home</Link>
             <Link href="/products" className="text-gray-700 font-semibold py-2" onClick={() => setIsMenuOpen(false)}>Products</Link>
             {categories.map((cat) => (

@@ -46,6 +46,14 @@ export default function ProductsPage() {
   const searchQuery = searchParams.get('search') || ''
   const categoryParam = searchParams.get('category')
   
+  // Debug: Log search query
+  useEffect(() => {
+    if (searchQuery) {
+      console.log('Search query from URL:', searchQuery)
+      console.log('Total products:', allProducts.length)
+    }
+  }, [searchQuery, allProducts.length])
+  
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState([0, 500])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
@@ -79,13 +87,19 @@ export default function ProductsPage() {
     // Search filter - search in name, description, category, and tags
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
+      console.log('Filtering products with query:', query)
       filtered = filtered.filter(p => {
-        const nameMatch = p.name.toLowerCase().includes(query)
-        const descMatch = p.description?.toLowerCase().includes(query)
-        const categoryMatch = p.category?.toLowerCase().includes(query)
-        const tagsMatch = p.tags?.some(tag => tag.toLowerCase().includes(query))
-        return nameMatch || descMatch || categoryMatch || tagsMatch
+        const nameMatch = p.name?.toLowerCase().includes(query) || false
+        const descMatch = p.description?.toLowerCase().includes(query) || false
+        const categoryMatch = p.category?.toLowerCase().includes(query) || false
+        const tagsMatch = p.tags?.some(tag => tag?.toLowerCase().includes(query)) || false
+        const matches = nameMatch || descMatch || categoryMatch || tagsMatch
+        if (matches) {
+          console.log('Product matches:', p.name)
+        }
+        return matches
       })
+      console.log('Filtered products count:', filtered.length)
     }
 
     // Category filter
