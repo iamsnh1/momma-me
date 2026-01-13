@@ -5,15 +5,17 @@ import { FiShoppingCart, FiMenu, FiX } from 'react-icons/fi'
 import { useCartStore } from '@/store/cartStore'
 import { useCategoryStore } from '@/store/categoryStore'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const totalItems = useCartStore((state) => state.getTotalItems())
   const { getActiveCategories, initialize: initializeCategories } = useCategoryStore()
   const pathname = usePathname()
+  const router = useRouter()
   const isHome = pathname === '/'
   
   useEffect(() => {
@@ -33,6 +35,21 @@ export default function Navigation() {
       document.body.style.overflow = 'unset'
     }
   }, [isMenuOpen])
+
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+      setIsMenuOpen(false) // Close mobile menu after search
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
 
   return (
     <>
@@ -54,16 +71,22 @@ export default function Navigation() {
             </Link>
             
             {/* Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+            <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-2xl mx-8">
               <input
                 type="text"
                 placeholder="Search for a Category, Brand or Product"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
                 className="w-full px-5 py-3 border-2 border-gray-300 rounded-l-xl focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20 transition-all shadow-sm"
               />
-              <button className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold">
+              <button 
+                type="submit"
+                className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold"
+              >
                 🔍
               </button>
-            </div>
+            </form>
           </div>
 
           {/* Right Side Links */}
@@ -160,6 +183,23 @@ export default function Navigation() {
       {isMenuOpen && (
         <div className="fixed inset-0 bg-white z-50 md:hidden pt-24 px-4">
           <div className="flex flex-col space-y-4">
+            {/* Mobile Search Bar */}
+            <form onSubmit={handleSearch} className="flex gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20"
+              />
+              <button 
+                type="submit"
+                className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold"
+              >
+                🔍
+              </button>
+            </form>
             <Link href="/" className="text-gray-700 hover:text-purple transition-colors py-2" onClick={() => setIsMenuOpen(false)}>Home</Link>
             <Link href="/products" className="text-gray-700 font-semibold py-2" onClick={() => setIsMenuOpen(false)}>Products</Link>
             {categories.map((cat) => (

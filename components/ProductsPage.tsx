@@ -6,6 +6,7 @@ import { useCartStore, Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import { useCategoryStore } from '@/store/categoryStore'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 const brands = ['Momma & Me', 'BabySafe', 'TinyTot', 'LittleOne', 'PureBaby']
 const ageRanges = ['0-3 months', '3-6 months', '6-12 months', '1-2 years', '2-3 years']
@@ -13,6 +14,7 @@ const ageRanges = ['0-3 months', '3-6 months', '6-12 months', '1-2 years', '2-3 
 export default function ProductsPage() {
   const { getAllProducts, initialize } = useProductStore()
   const { getActiveCategories, initialize: initializeCategories } = useCategoryStore()
+  const searchParams = useSearchParams()
   
   useEffect(() => {
     initialize()
@@ -21,6 +23,10 @@ export default function ProductsPage() {
   
   const allProducts = getAllProducts()
   const categories = getActiveCategories()
+  
+  // Get search query from URL
+  const searchQuery = searchParams.get('search') || ''
+  const categoryParam = searchParams.get('category')
   
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState([0, 500])
@@ -33,6 +39,16 @@ export default function ProductsPage() {
   const [notification, setNotification] = useState<string | null>(null)
   const addToCart = useCartStore((state) => state.addToCart)
 
+  // Update selected categories when category param changes
+  useEffect(() => {
+    if (categoryParam) {
+      const category = categories.find(c => c.id === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase())
+      if (category) {
+        setSelectedCategories([category.name])
+      }
+    }
+  }, [categoryParam, categories])
+
   const handleAddToCart = (product: Product) => {
     addToCart(product)
     setNotification(`Added ${product.name} to cart!`)
@@ -42,13 +58,30 @@ export default function ProductsPage() {
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
 
+    // Search filter - search in name, description, category, and tags
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(p => {
+        const nameMatch = p.name.toLowerCase().includes(query)
+        const descMatch = p.description?.toLowerCase().includes(query)
+        const categoryMatch = p.category?.toLowerCase().includes(query)
+        const tagsMatch = p.tags?.some(tag => tag.toLowerCase().includes(query))
+        return nameMatch || descMatch || categoryMatch || tagsMatch
+      })
+    }
+
     // Category filter
     if (selectedCategories.length > 0) {
       filtered = filtered.filter(p => selectedCategories.includes(p.category))
     }
 
-    // Price filter
-    filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1])
+    // Price filter - use salePrice if available, otherwise use price
+    filtered = filtered.filter(p => {
+      const productPrice = p.salePrice && p.salePrice < (p.originalPrice || p.price) 
+        ? p.salePrice 
+        : (p.originalPrice || p.price)
+      return productPrice >= priceRange[0] && productPrice <= priceRange[1]
+    })
 
     // Rating filter
     if (minRating > 0) {
@@ -58,10 +91,18 @@ export default function ProductsPage() {
     // Sort
     switch (sortBy) {
       case 'price-low':
-        filtered.sort((a, b) => a.price - b.price)
+        filtered.sort((a, b) => {
+          const priceA = a.salePrice && a.salePrice < (a.originalPrice || a.price) ? a.salePrice : (a.originalPrice || a.price)
+          const priceB = b.salePrice && b.salePrice < (b.originalPrice || b.price) ? b.salePrice : (b.originalPrice || b.price)
+          return priceA - priceB
+        })
         break
       case 'price-high':
-        filtered.sort((a, b) => b.price - a.price)
+        filtered.sort((a, b) => {
+          const priceA = a.salePrice && a.salePrice < (a.originalPrice || a.price) ? a.salePrice : (a.originalPrice || a.price)
+          const priceB = b.salePrice && b.salePrice < (b.originalPrice || b.price) ? b.salePrice : (b.originalPrice || b.price)
+          return priceB - priceA
+        })
         break
       case 'newest':
         filtered.reverse()
@@ -74,7 +115,7 @@ export default function ProductsPage() {
     }
 
     return filtered
-  }, [allProducts, selectedCategories, priceRange, minRating, sortBy])
+  }, [allProducts, searchQuery, selectedCategories, priceRange, minRating, sortBy])
 
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev =>
@@ -241,8 +282,14 @@ export default function ProductsPage() {
         {/* Top Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-purple mb-2">Products</h1>
-            <p className="text-gray-600">Showing {filteredProducts.length} products</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-purple mb-2">
+              {searchQuery ? `Search Results for "${searchQuery}"` : 'Products'}
+            </h1>
+            <p className="text-gray-600">
+              {searchQuery 
+                ? `Found ${filteredProducts.length} product${filteredProducts.length !== 1 ? 's' : ''}`
+                : `Showing ${filteredProducts.length} products`}
+            </p>
           </div>
           <div className="flex items-center space-x-4 w-full md:w-auto">
             {/* Mobile Filter Toggle */}
