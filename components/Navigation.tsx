@@ -38,16 +38,19 @@ export default function Navigation() {
 
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault()
-    if (searchQuery.trim()) {
-      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`)
+    const trimmedQuery = searchQuery.trim()
+    if (trimmedQuery) {
+      const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
+      router.push(searchUrl)
       setSearchQuery('')
       setIsMenuOpen(false) // Close mobile menu after search
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleSearch()
+      e.preventDefault()
+      handleSearch(e)
     }
   }
 
@@ -77,7 +80,7 @@ export default function Navigation() {
                 placeholder="Search for a Category, Brand or Product"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 className="w-full px-5 py-3 border-2 border-gray-300 rounded-l-xl focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20 transition-all shadow-sm"
               />
               <button 
@@ -190,7 +193,7 @@ export default function Navigation() {
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple focus:ring-2 focus:ring-purple/20"
               />
               <button 
