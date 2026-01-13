@@ -46,6 +46,14 @@ export default function ProductsPage() {
   const searchQuery = searchParams.get('search') || ''
   const categoryParam = searchParams.get('category')
   
+  // Debug: Verify search query is being read
+  useEffect(() => {
+    if (searchQuery) {
+      console.log('🔍 Search query detected:', searchQuery)
+      console.log('📦 Total products:', allProducts.length)
+    }
+  }, [searchQuery, allProducts.length])
+  
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState([0, 500])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
@@ -79,6 +87,7 @@ export default function ProductsPage() {
     // Comprehensive search filter - searches ALL available product fields
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
+      const originalCount = filtered.length
       
       filtered = filtered.filter(p => {
         // Search in name (most important)
@@ -99,8 +108,16 @@ export default function ProductsPage() {
         const fullDescMatch = productAny.fullDescription?.toLowerCase().includes(query) || false
         
         // Return true if ANY field matches
-        return nameMatch || descMatch || categoryMatch || tagsMatch || skuMatch || materialMatch || shortDescMatch || fullDescMatch
+        const matches = nameMatch || descMatch || categoryMatch || tagsMatch || skuMatch || materialMatch || shortDescMatch || fullDescMatch
+        
+        if (matches) {
+          console.log('✅ Product matches:', p.name)
+        }
+        
+        return matches
       })
+      
+      console.log(`🔍 Search "${query}": ${originalCount} → ${filtered.length} products`)
     }
 
     // Category filter

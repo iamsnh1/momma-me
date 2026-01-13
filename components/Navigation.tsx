@@ -38,19 +38,28 @@ export default function Navigation() {
 
   const performSearch = () => {
     const trimmedQuery = searchQuery.trim()
-    if (trimmedQuery && typeof window !== 'undefined') {
-      window.location.href = `/products?search=${encodeURIComponent(trimmedQuery)}`
+    if (!trimmedQuery) {
+      alert('Please enter a search term')
+      return
+    }
+    
+    if (typeof window !== 'undefined') {
+      const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
+      // Force navigation
+      window.location.href = searchUrl
     }
   }
 
-  const handleSearchClick = (e: React.MouseEvent) => {
+  const handleSearchClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
+    e.stopPropagation()
     performSearch()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
+      e.stopPropagation()
       performSearch()
     }
   }
@@ -87,7 +96,9 @@ export default function Navigation() {
               <button 
                 type="button"
                 onClick={handleSearchClick}
-                className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold cursor-pointer"
+                onMouseDown={(e) => e.preventDefault()}
+                className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold cursor-pointer active:scale-95"
+                aria-label="Search products"
               >
                 🔍 Search
               </button>
@@ -201,7 +212,9 @@ export default function Navigation() {
               <button 
                 type="button"
                 onClick={handleSearchClick}
-                className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold cursor-pointer"
+                onMouseDown={(e) => e.preventDefault()}
+                className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold cursor-pointer active:scale-95"
+                aria-label="Search products"
               >
                 🔍
               </button>
