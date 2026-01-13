@@ -165,16 +165,44 @@ const saveBanners = (banners: Banner[]): boolean => {
       
       if (compressedData.length <= MAX_SIZE) {
         console.log(`Compressed by removing ${banners.length - compressedBanners.length} inactive banners`)
+        // Create backup before saving
+        const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
+        const currentData = localStorage.getItem(STORAGE_KEY)
+        if (currentData) {
+          localStorage.setItem(backupKey, currentData)
+          const backupKeys = Object.keys(localStorage)
+            .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
+            .sort()
+            .reverse()
+            .slice(3)
+          backupKeys.forEach(key => localStorage.removeItem(key))
+        }
         localStorage.setItem(STORAGE_KEY, compressedData)
+        localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
+        localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
         return true
       }
       
       return false
     }
     
+    // Create backup before saving
+    const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
+    const currentData = localStorage.getItem(STORAGE_KEY)
+    if (currentData) {
+      localStorage.setItem(backupKey, currentData)
+      const backupKeys = Object.keys(localStorage)
+        .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
+        .sort()
+        .reverse()
+        .slice(3)
+      backupKeys.forEach(key => localStorage.removeItem(key))
+    }
+    
     localStorage.setItem(STORAGE_KEY, data)
     localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-    console.log(`✅ Saved ${banners.length} banners to localStorage`)
+    localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
+    console.log(`✅ Saved ${banners.length} banners to localStorage at ${new Date().toLocaleString()}`)
     return true
   } catch (e: any) {
     console.error('Error saving banners to localStorage:', e)
@@ -215,16 +243,15 @@ export const useBannerStore = create<BannerStore>((set, get) => ({
   banners: loadBanners(),
 
   initialize: () => {
+    // NEVER overwrite existing data - only load if store is empty
     const currentBanners = get().banners
     if (currentBanners.length === 0) {
-      const loaded = loadBanners()
-      set({ banners: loaded })
-    } else {
       const loaded = loadBanners()
       if (loaded.length > 0) {
         set({ banners: loaded })
       }
     }
+    // If we already have banners, keep them - don't reload
   },
 
   addBanner: (bannerData) => {

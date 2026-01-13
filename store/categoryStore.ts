@@ -44,15 +44,31 @@ const loadCategories = (): Category[] => {
   }
 }
 
-// Save categories to localStorage
+// Save categories to localStorage with backup
 const saveCategories = (categories: Category[]) => {
   if (typeof window === 'undefined') return
   try {
+    // Create backup before saving
+    const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
+    const currentData = localStorage.getItem(STORAGE_KEY)
+    if (currentData) {
+      localStorage.setItem(backupKey, currentData)
+      // Clean up old backups (keep only last 3)
+      const backupKeys = Object.keys(localStorage)
+        .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
+        .sort()
+        .reverse()
+        .slice(3)
+      backupKeys.forEach(key => localStorage.removeItem(key))
+    }
+    
     localStorage.setItem(STORAGE_KEY, JSON.stringify(categories))
     localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-    console.log(`✅ Saved ${categories.length} categories to localStorage`)
+    localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
+    console.log(`✅ Saved ${categories.length} categories to localStorage at ${new Date().toLocaleString()}`)
   } catch (e) {
     console.error('Error saving categories to localStorage:', e)
+    throw e
   }
 }
 
@@ -72,16 +88,15 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
   categories: loadCategories(),
 
   initialize: () => {
+    // NEVER overwrite existing data - only load if store is empty
     const currentCategories = get().categories
     if (currentCategories.length === 0) {
-      const loaded = loadCategories()
-      set({ categories: loaded })
-    } else {
       const loaded = loadCategories()
       if (loaded.length > 0) {
         set({ categories: loaded })
       }
     }
+    // If we already have categories, keep them - don't reload
   },
 
   addCategory: (category) => {

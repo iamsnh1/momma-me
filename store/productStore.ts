@@ -42,20 +42,37 @@ const loadProducts = (): Product[] => {
   }
 }
 
-// Save products to localStorage
+// Save products to localStorage with backup
 const saveProducts = (products: Product[]) => {
   if (typeof window === 'undefined') return
   try {
+    // Create backup before saving (keep last 3 backups)
+    const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
+    const currentData = localStorage.getItem(STORAGE_KEY)
+    if (currentData) {
+      localStorage.setItem(backupKey, currentData)
+      // Clean up old backups (keep only last 3)
+      const backupKeys = Object.keys(localStorage)
+        .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
+        .sort()
+        .reverse()
+        .slice(3) // Keep only last 3
+      backupKeys.forEach(key => localStorage.removeItem(key))
+    }
+    
+    // Save new data
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products))
-    // Mark that we've saved data
+    // Mark that we've saved data with timestamp
     localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-    console.log(`✅ Saved ${products.length} products to localStorage`)
+    localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
+    console.log(`✅ Saved ${products.length} products to localStorage at ${new Date().toLocaleString()}`)
   } catch (e) {
     console.error('Error saving products to localStorage:', e)
     // Check if it's a quota error
     if (e instanceof DOMException && e.name === 'QuotaExceededError') {
       alert('Storage quota exceeded. Please clear some space or contact support.')
     }
+    throw e // Re-throw to prevent silent failures
   }
 }
 
@@ -74,19 +91,17 @@ export const useProductStore = create<ProductStore>((set, get) => ({
   products: loadProducts(),
   
   initialize: () => {
-    // Only initialize if we don't already have products loaded
-    // This prevents overwriting current state
+    // NEVER overwrite existing data - only load if store is empty
+    // This ensures admin changes are never lost
     const currentProducts = get().products
     if (currentProducts.length === 0) {
-      const loaded = loadProducts()
-      set({ products: loaded })
-    } else {
-      // Refresh from localStorage to get latest saved data
       const loaded = loadProducts()
       if (loaded.length > 0) {
         set({ products: loaded })
       }
     }
+    // If we already have products, keep them - don't reload from localStorage
+    // This prevents any accidental data loss
   },
   
   addProduct: (product) => {
