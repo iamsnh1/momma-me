@@ -121,10 +121,20 @@ export default function AdminProductsManagement() {
   }
 
   const handleSave = () => {
+    // Determine the display price (use salePrice if available, otherwise use regular price)
+    const displayPrice = formData.salePrice && parseFloat(formData.salePrice) > 0 
+      ? parseFloat(formData.salePrice) 
+      : formData.price
+    
+    // Original price is the regular price field
+    const originalPrice = formData.price
+    
     if (editingId) {
       updateProduct(editingId, {
         name: formData.name,
-        price: formData.price,
+        price: displayPrice,
+        originalPrice: originalPrice,
+        salePrice: formData.salePrice && parseFloat(formData.salePrice) > 0 ? parseFloat(formData.salePrice) : undefined,
         image: formData.images[0] || '',
         category: formData.category,
         rating: 5,
@@ -135,7 +145,9 @@ export default function AdminProductsManagement() {
       const newProduct: Product = {
         id: Date.now().toString(),
         name: formData.name,
-        price: formData.price,
+        price: displayPrice,
+        originalPrice: originalPrice,
+        salePrice: formData.salePrice && parseFloat(formData.salePrice) > 0 ? parseFloat(formData.salePrice) : undefined,
         image: formData.images[0] || '',
         category: formData.category,
         rating: 5,
@@ -451,30 +463,70 @@ export default function AdminProductsManagement() {
                 <h3 className="text-lg font-bold text-purple">Pricing & Inventory</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Regular Price (₹) *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Original Price (₹) *</label>
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        setFormData({ ...formData, price: value })
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple"
                       required
                     />
+                    <p className="text-xs text-gray-500 mt-1">Regular price before discount</p>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Sale Price (₹)</label>
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       value={formData.salePrice}
-                      onChange={(e) => setFormData({ ...formData, salePrice: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({ ...formData, salePrice: value })
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple"
+                      placeholder="Leave empty for no sale"
                     />
-                    {formData.salePrice && (
-                      <p className="text-sm text-green-600 mt-1">
-                        Save {((1 - parseFloat(formData.salePrice) / formData.price) * 100).toFixed(0)}%
-                      </p>
-                    )}
+                    {(() => {
+                      // Parse values - handle empty strings and ensure numbers
+                      const salePriceStr = formData.salePrice?.toString().trim() || ''
+                      const salePriceNum = salePriceStr ? parseFloat(salePriceStr) : 0
+                      const originalPriceNum = Number(formData.price) || 0
+                      
+                      // Validate: sale price must be less than original price and both must be positive
+                      const isValidSale = salePriceNum > 0 && 
+                                         originalPriceNum > 0 && 
+                                         salePriceNum < originalPriceNum &&
+                                         !isNaN(salePriceNum) &&
+                                         !isNaN(originalPriceNum)
+                      
+                      if (isValidSale) {
+                        const discountPercent = Math.round(((1 - salePriceNum / originalPriceNum) * 100))
+                        const savingsAmount = (originalPriceNum - salePriceNum).toFixed(2)
+                        return (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-sm text-green-600 font-semibold">
+                              💰 Save {discountPercent}% (₹{savingsAmount})
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Original: ₹{originalPriceNum.toFixed(2)} → Sale: ₹{salePriceNum.toFixed(2)}
+                            </p>
+                          </div>
+                        )
+                      } else if (salePriceStr && salePriceNum > 0 && originalPriceNum > 0 && salePriceNum >= originalPriceNum) {
+                        return (
+                          <p className="text-sm text-red-600 mt-1">
+                            ⚠️ Sale price must be less than original price
+                          </p>
+                        )
+                      }
+                      return null
+                    })()}
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Stock Quantity *</label>
@@ -739,7 +791,16 @@ export default function AdminProductsManagement() {
                   <td className="px-4 py-3">
                     <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm">{product.category}</span>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-primary-pink-dark">₹{product.price.toFixed(2)}</td>
+                  <td className="px-4 py-3">
+                    {product.salePrice && product.salePrice < (product.originalPrice || product.price) ? (
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-primary-pink-dark">₹{product.salePrice.toFixed(2)}</span>
+                        <span className="text-xs text-gray-500 line-through">₹{(product.originalPrice || product.price).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <span className="font-semibold text-primary-pink-dark">₹{product.price.toFixed(2)}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {mounted ? (
                       <span className="text-gray-600">N/A</span>
@@ -762,7 +823,8 @@ export default function AdminProductsManagement() {
                           setFormData({ 
                             ...formData, 
                             name: product.name, 
-                            price: product.price, 
+                            price: product.originalPrice || product.price,
+                            salePrice: product.salePrice || product.price || '',
                             category: product.category,
                             shortDescription: product.description || '',
                             images: product.image ? [product.image] : []

@@ -54,3 +54,4 @@ DigitalOcean requires GitHub authentication through their web interface (I canno
 
 **This is the only step I cannot automate. Once you connect GitHub, everything else is ready!**
 
+

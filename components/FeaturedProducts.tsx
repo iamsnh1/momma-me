@@ -76,9 +76,16 @@ export default function FeaturedProducts() {
                 </div>
 
                 {/* Price */}
-                <p className="text-xl font-bold text-primary-pink-dark">
-                  ${product.price.toFixed(2)}
-                </p>
+                <div className="flex items-baseline space-x-2">
+                  <p className="text-xl font-bold text-primary-pink-dark">
+                    ₹{product.salePrice && product.salePrice < (product.originalPrice || product.price) ? product.salePrice.toFixed(2) : product.price.toFixed(2)}
+                  </p>
+                  {product.salePrice && product.salePrice < (product.originalPrice || product.price) && (
+                    <p className="text-sm text-gray-500 line-through">
+                      ₹{(product.originalPrice || product.price).toFixed(2)}
+                    </p>
+                  )}
+                </div>
 
                 {/* Add to Cart Button */}
                 <button

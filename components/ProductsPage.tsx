@@ -353,7 +353,16 @@ function ProductCard({ product, onAddToCart }: { product: Product; onAddToCart: 
               <span key={i} className="text-yellow-400 text-sm">★</span>
             ))}
           </div>
-          <p className="text-xl font-bold text-primary-pink-dark">₹{product.price.toFixed(2)}</p>
+          <div className="flex items-baseline space-x-2">
+            <p className="text-xl font-bold text-primary-pink-dark">
+              ₹{product.salePrice && product.salePrice < (product.originalPrice || product.price) ? product.salePrice.toFixed(2) : product.price.toFixed(2)}
+            </p>
+            {product.salePrice && product.salePrice < (product.originalPrice || product.price) && (
+              <p className="text-sm text-gray-500 line-through">
+                ₹{(product.originalPrice || product.price).toFixed(2)}
+              </p>
+            )}
+          </div>
           <button
             onClick={(e) => {
               e.preventDefault()
@@ -384,7 +393,16 @@ function ProductListCard({ product, onAddToCart }: { product: Product; onAddToCa
             ))}
           </div>
           <p className="text-gray-600 text-sm mb-2">{product.description}</p>
-          <p className="text-xl font-bold text-primary-pink-dark mb-2">₹{product.price.toFixed(2)}</p>
+          <div className="flex items-baseline space-x-2 mb-2">
+            <p className="text-xl font-bold text-primary-pink-dark">
+              ₹{product.salePrice && product.salePrice < (product.originalPrice || product.price) ? product.salePrice.toFixed(2) : product.price.toFixed(2)}
+            </p>
+            {product.salePrice && product.salePrice < (product.originalPrice || product.price) && (
+              <p className="text-sm text-gray-500 line-through">
+                ₹{(product.originalPrice || product.price).toFixed(2)}
+              </p>
+            )}
+          </div>
           <button
             onClick={(e) => {
               e.preventDefault()

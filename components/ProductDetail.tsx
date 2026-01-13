@@ -103,9 +103,28 @@ export default function ProductDetail({ productId }: { productId: string }) {
 
               {/* Price */}
               <div className="mb-6">
-                <p className="text-4xl font-bold text-primary-pink-dark">₹{product.price.toFixed(2)}</p>
-                <p className="text-lg text-gray-500 line-through">₹{(product.price * 1.2).toFixed(2)}</p>
-                <span className="text-green-600 font-semibold">Save 20%</span>
+                {product.salePrice && product.salePrice < (product.originalPrice || product.price) ? (
+                  <>
+                    <p className="text-4xl font-bold text-primary-pink-dark">₹{product.salePrice.toFixed(2)}</p>
+                    <p className="text-lg text-gray-500 line-through">₹{(product.originalPrice || product.price).toFixed(2)}</p>
+                    <span className="text-green-600 font-semibold">
+                      Save {Math.round(((1 - product.salePrice / (product.originalPrice || product.price)) * 100))}% 
+                      ({((product.originalPrice || product.price) - product.salePrice).toFixed(2)} ₹)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-4xl font-bold text-primary-pink-dark">₹{product.price.toFixed(2)}</p>
+                    {product.originalPrice && product.originalPrice > product.price && (
+                      <>
+                        <p className="text-lg text-gray-500 line-through">₹{product.originalPrice.toFixed(2)}</p>
+                        <span className="text-green-600 font-semibold">
+                          Save {Math.round(((1 - product.price / product.originalPrice) * 100))}%
+                        </span>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Description */}

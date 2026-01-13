@@ -31,3 +31,4 @@ echo "✅ Deployment complete!"
 echo "📊 Application status:"
 pm2 status
 
+

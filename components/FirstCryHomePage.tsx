@@ -98,8 +98,14 @@ export default function FirstCryHomePage() {
   }
 
   const ProductCard = ({ product }: { product: Product }) => {
-    const originalPrice = product.price * 1.3
-    const discount = Math.round(((originalPrice - product.price) / originalPrice) * 100)
+    // Use actual originalPrice and salePrice if available, otherwise calculate fake discount
+    const originalPrice = product.originalPrice || (product.salePrice ? product.price : product.price * 1.3)
+    const displayPrice = product.salePrice || product.price
+    const discount = product.salePrice && product.originalPrice 
+      ? Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)
+      : product.salePrice && product.price
+      ? Math.round(((product.price - product.salePrice) / product.price) * 100)
+      : Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
 
     return (
       <div className="bg-cotton-white rounded-xl shadow-md border border-blush-pink/20 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group">
@@ -151,11 +157,11 @@ export default function FirstCryHomePage() {
           </div>
 
           <div className="flex items-baseline space-x-2 pt-1">
-            <span className="font-header text-xl font-bold text-dusty-rose">{formatINR(product.price)}</span>
-            {discount > 0 && (
+            <span className="font-header text-xl font-bold text-dusty-rose">{formatINR(displayPrice)}</span>
+            {discount > 0 && originalPrice > displayPrice && (
               <>
                 <span className="font-body text-sm text-warm-gray/60 line-through font-medium">{formatINR(originalPrice)}</span>
-                <span className="font-body text-xs text-mint-green font-semibold bg-mint-green/20 px-2 py-0.5 rounded">Save {formatINR(originalPrice - product.price)}</span>
+                <span className="font-body text-xs text-mint-green font-semibold bg-mint-green/20 px-2 py-0.5 rounded">Save {formatINR(originalPrice - displayPrice)}</span>
               </>
             )}
           </div>
