@@ -46,14 +46,6 @@ export default function ProductsPage() {
   const searchQuery = searchParams.get('search') || ''
   const categoryParam = searchParams.get('category')
   
-  // Debug: Log search query
-  useEffect(() => {
-    if (searchQuery) {
-      console.log('Search query from URL:', searchQuery)
-      console.log('Total products:', allProducts.length)
-    }
-  }, [searchQuery, allProducts.length])
-  
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState([0, 500])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
@@ -84,22 +76,31 @@ export default function ProductsPage() {
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
 
-    // Search filter - search in name, description, category, and tags
+    // Comprehensive search filter - searches ALL available product fields
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      console.log('Filtering products with query:', query)
+      
       filtered = filtered.filter(p => {
+        // Search in name (most important)
         const nameMatch = p.name?.toLowerCase().includes(query) || false
+        
+        // Search in description
         const descMatch = p.description?.toLowerCase().includes(query) || false
+        
+        // Search in category
         const categoryMatch = p.category?.toLowerCase().includes(query) || false
-        const tagsMatch = p.tags?.some(tag => tag?.toLowerCase().includes(query)) || false
-        const matches = nameMatch || descMatch || categoryMatch || tagsMatch
-        if (matches) {
-          console.log('Product matches:', p.name)
-        }
-        return matches
+        
+        // Search in any additional fields if they exist (using type assertion for optional fields)
+        const productAny = p as any
+        const tagsMatch = productAny.tags?.some((tag: string) => tag?.toLowerCase().includes(query)) || false
+        const skuMatch = productAny.sku?.toLowerCase().includes(query) || false
+        const materialMatch = productAny.material?.toLowerCase().includes(query) || false
+        const shortDescMatch = productAny.shortDescription?.toLowerCase().includes(query) || false
+        const fullDescMatch = productAny.fullDescription?.toLowerCase().includes(query) || false
+        
+        // Return true if ANY field matches
+        return nameMatch || descMatch || categoryMatch || tagsMatch || skuMatch || materialMatch || shortDescMatch || fullDescMatch
       })
-      console.log('Filtered products count:', filtered.length)
     }
 
     // Category filter

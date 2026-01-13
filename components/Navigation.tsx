@@ -36,35 +36,22 @@ export default function Navigation() {
     }
   }, [isMenuOpen])
 
-  const handleSearch = (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    
+  const performSearch = () => {
     const trimmedQuery = searchQuery.trim()
-    console.log('Search button clicked, query:', trimmedQuery)
-    
-    if (!trimmedQuery) {
-      console.log('Empty query, not searching')
-      return
+    if (trimmedQuery && typeof window !== 'undefined') {
+      window.location.href = `/products?search=${encodeURIComponent(trimmedQuery)}`
     }
-    
-    const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
-    console.log('Navigating to:', searchUrl)
-    
-    // Always use window.location for reliable navigation
-    // This ensures the page refreshes and search params are read correctly
-    if (typeof window !== 'undefined') {
-      window.location.href = searchUrl
-    }
+  }
+
+  const handleSearchClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    performSearch()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      e.stopPropagation()
-      handleSearch(e)
+      performSearch()
     }
   }
 
@@ -91,7 +78,7 @@ export default function Navigation() {
             <div className="hidden md:flex flex-1 max-w-2xl mx-8">
               <input
                 type="text"
-                placeholder="Search for a Category, Brand or Product"
+                placeholder="Search for products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -99,10 +86,10 @@ export default function Navigation() {
               />
               <button 
                 type="button"
-                onClick={handleSearch}
+                onClick={handleSearchClick}
                 className="bg-gradient-to-r from-purple to-purple-light text-white px-8 py-3 rounded-r-xl hover:from-purple-light hover:to-purple transition-all shadow-md hover:shadow-lg font-semibold cursor-pointer"
               >
-                🔍
+                🔍 Search
               </button>
             </div>
           </div>
@@ -213,7 +200,7 @@ export default function Navigation() {
               />
               <button 
                 type="button"
-                onClick={handleSearch}
+                onClick={handleSearchClick}
                 className="bg-gradient-to-r from-purple to-purple-light text-white px-6 py-3 rounded-lg hover:from-purple-light hover:to-purple transition-all font-semibold cursor-pointer"
               >
                 🔍
