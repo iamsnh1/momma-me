@@ -121,38 +121,37 @@ export default function AdminProductsManagement() {
   }
 
   const handleSave = () => {
-    // Determine the display price (use salePrice if available, otherwise use regular price)
-    const displayPrice = formData.salePrice && parseFloat(formData.salePrice) > 0 
-      ? parseFloat(formData.salePrice) 
-      : formData.price
+    // Parse sale price properly
+    const salePriceStr = formData.salePrice?.toString().trim() || ''
+    const salePriceNum = salePriceStr ? parseFloat(salePriceStr) : 0
+    const originalPriceNum = Number(formData.price) || 0
     
-    // Original price is the regular price field
-    const originalPrice = formData.price
+    // Determine if we have a valid sale price
+    const hasSalePrice = salePriceNum > 0 && originalPriceNum > 0 && salePriceNum < originalPriceNum
+    
+    // The display price (what customer sees) should be salePrice if available, otherwise original price
+    const displayPrice = hasSalePrice ? salePriceNum : originalPriceNum
+    
+    // Build the product update object
+    const productUpdate: Partial<Product> = {
+      name: formData.name,
+      price: displayPrice, // This is what customers pay
+      originalPrice: originalPriceNum, // Always save the original price
+      salePrice: hasSalePrice ? salePriceNum : undefined, // Only set if valid sale
+      image: formData.images[0] || '',
+      category: formData.category,
+      rating: 5,
+      description: formData.shortDescription
+    }
     
     if (editingId) {
-      updateProduct(editingId, {
-        name: formData.name,
-        price: displayPrice,
-        originalPrice: originalPrice,
-        salePrice: formData.salePrice && parseFloat(formData.salePrice) > 0 ? parseFloat(formData.salePrice) : undefined,
-        image: formData.images[0] || '',
-        category: formData.category,
-        rating: 5,
-        description: formData.shortDescription
-      })
+      updateProduct(editingId, productUpdate)
       setEditingId(null)
     } else if (isAdding) {
       const newProduct: Product = {
         id: Date.now().toString(),
-        name: formData.name,
-        price: displayPrice,
-        originalPrice: originalPrice,
-        salePrice: formData.salePrice && parseFloat(formData.salePrice) > 0 ? parseFloat(formData.salePrice) : undefined,
-        image: formData.images[0] || '',
-        category: formData.category,
-        rating: 5,
-        description: formData.shortDescription
-      }
+        ...productUpdate
+      } as Product
       addProduct(newProduct)
       setIsAdding(false)
     }
@@ -820,11 +819,16 @@ export default function AdminProductsManagement() {
                         onClick={() => {
                           setEditingId(product.id)
                           setIsAdding(false)
+                          // Load product data into form - preserve originalPrice and salePrice
+                          const originalPrice = product.originalPrice || product.price
+                          const salePrice = product.salePrice && product.salePrice < originalPrice 
+                            ? product.salePrice.toString() 
+                            : ''
                           setFormData({ 
                             ...formData, 
                             name: product.name, 
-                            price: product.originalPrice || product.price,
-                            salePrice: product.salePrice || product.price || '',
+                            price: originalPrice,
+                            salePrice: salePrice,
                             category: product.category,
                             shortDescription: product.description || '',
                             images: product.image ? [product.image] : []
