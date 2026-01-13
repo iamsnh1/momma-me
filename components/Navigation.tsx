@@ -37,20 +37,23 @@ export default function Navigation() {
   }, [isMenuOpen])
 
   const handleSearch = (e?: React.FormEvent | React.MouseEvent) => {
-    e?.preventDefault()
-    e?.stopPropagation()
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    
     const trimmedQuery = searchQuery.trim()
-    if (trimmedQuery && router) {
-      try {
-        const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
-        router.push(searchUrl)
-        setSearchQuery('')
-        setIsMenuOpen(false) // Close mobile menu after search
-      } catch (error) {
-        console.error('Search navigation error:', error)
-        // Fallback to window.location if router fails
-        window.location.href = `/products?search=${encodeURIComponent(trimmedQuery)}`
-      }
+    
+    if (!trimmedQuery) {
+      return
+    }
+    
+    const searchUrl = `/products?search=${encodeURIComponent(trimmedQuery)}`
+    
+    // Always use window.location for reliable navigation
+    // This ensures the page refreshes and search params are read correctly
+    if (typeof window !== 'undefined') {
+      window.location.href = searchUrl
     }
   }
 
