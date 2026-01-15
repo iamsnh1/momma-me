@@ -5,7 +5,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiUpload, FiEye } from 'react-i
 import { Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import { useCategoryStore } from '@/store/categoryStore'
-import { uploadImage, isImageURL } from '@/utils/imageUpload'
+import { uploadImage, isImageURL } from '@/utils/spacesUpload'
 
 export default function AdminProductsManagement() {
   const { products, addProduct, updateProduct, deleteProduct, initialize } = useProductStore()

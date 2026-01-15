@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiEye, FiEyeOff, FiChevronUp, FiChevronDown } from 'react-icons/fi'
 import { useBannerStore, Banner } from '@/store/bannerStore'
-import { uploadImage, isImageURL } from '@/utils/imageUpload'
+import { uploadImage, isImageURL } from '@/utils/spacesUpload'
 
 export default function AdminBannersManagement() {
   const { banners, addBanner, updateBanner, deleteBanner, initialize } = useBannerStore()
