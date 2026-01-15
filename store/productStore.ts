@@ -42,35 +42,95 @@ const loadProducts = (): Product[] => {
   }
 }
 
-// Save products to localStorage with backup
+// Save products to localStorage with backup and base64 image removal
 const saveProducts = (products: Product[]) => {
   if (typeof window === 'undefined') return
   try {
-    // Create backup before saving (keep last 3 backups)
-    const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
-    const currentData = localStorage.getItem(STORAGE_KEY)
-    if (currentData) {
-      localStorage.setItem(backupKey, currentData)
-      // Clean up old backups (keep only last 3)
+    // Remove base64 images to save space (they should be URLs from Spaces)
+    const productsWithoutBase64 = products.map(p => {
+      // If image is base64 (starts with data:), remove it or keep URL
+      if (p.image && p.image.startsWith('data:image/')) {
+        console.warn(`⚠️ Product "${p.name}" has base64 image. Removing to save space. Please upload to Spaces.`)
+        return { ...p, image: '' } // Remove base64 image
+      }
+      return p
+    })
+    
+    // Clean up old backups FIRST to free space
+    try {
       const backupKeys = Object.keys(localStorage)
         .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
         .sort()
         .reverse()
-        .slice(3) // Keep only last 3
-      backupKeys.forEach(key => localStorage.removeItem(key))
+        .slice(2) // Keep only last 2 (reduced from 3)
+      backupKeys.forEach(key => {
+        try {
+          localStorage.removeItem(key)
+        } catch (e) {
+          console.warn('Failed to remove backup:', key)
+        }
+      })
+    } catch (e) {
+      console.warn('Failed to clean up backups:', e)
+    }
+    
+    // Try to create backup (but don't fail if it doesn't work)
+    try {
+      const currentData = localStorage.getItem(STORAGE_KEY)
+      if (currentData && currentData.length < 500 * 1024) { // Only backup if < 500KB
+        const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
+        localStorage.setItem(backupKey, currentData)
+      }
+    } catch (e) {
+      console.warn('Could not create backup (quota may be full):', e)
+    }
+    
+    // Calculate size before saving
+    const dataToSave = JSON.stringify(productsWithoutBase64)
+    const dataSize = dataToSave.length
+    const dataSizeMB = (dataSize / (1024 * 1024)).toFixed(2)
+    
+    // Check if data is too large
+    const MAX_SIZE = 2 * 1024 * 1024 // 2MB limit (reduced from default)
+    if (dataSize > MAX_SIZE) {
+      console.error(`Product data too large: ${dataSizeMB} MB (limit: 2 MB)`)
+      // Remove products with base64 images first
+      const cleanedProducts = productsWithoutBase64.filter(p => {
+        // Keep products with URLs or no images
+        return !p.image || (!p.image.startsWith('data:') && p.image.startsWith('http'))
+      })
+      
+      const cleanedData = JSON.stringify(cleanedProducts)
+      if (cleanedData.length > MAX_SIZE) {
+        throw new Error(`Product data still too large after cleanup (${(cleanedData.length / 1024 / 1024).toFixed(2)} MB). Please remove products with large images or use image URLs from Spaces.`)
+      }
+      
+      // Save cleaned products
+      localStorage.setItem(STORAGE_KEY, cleanedData)
+      localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
+      localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
+      console.log(`✅ Saved ${cleanedProducts.length} products (removed ${productsWithoutBase64.length - cleanedProducts.length} with base64 images)`)
+      return
     }
     
     // Save new data
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products))
+    localStorage.setItem(STORAGE_KEY, dataToSave)
     // Mark that we've saved data with timestamp
     localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
     localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-    console.log(`✅ Saved ${products.length} products to localStorage at ${new Date().toLocaleString()}`)
-  } catch (e) {
+    console.log(`✅ Saved ${productsWithoutBase64.length} products to localStorage (${dataSizeMB} MB)`)
+  } catch (e: any) {
     console.error('Error saving products to localStorage:', e)
     // Check if it's a quota error
-    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-      alert('Storage quota exceeded. Please clear some space or contact support.')
+    if (e instanceof DOMException && e.name === 'QuotaExceededError' || e.name === 'QuotaExceededError') {
+      const errorMsg = '❌ Storage quota exceeded!\n\n' +
+        'Solutions:\n' +
+        '1. Use image URLs from DigitalOcean Spaces (not base64)\n' +
+        '2. Clear browser cache/localStorage\n' +
+        '3. Remove products with large images\n' +
+        '4. Make sure Spaces environment variables are set'
+      alert(errorMsg)
+      throw new Error('Storage quota exceeded. Please use image URLs from Spaces instead of uploading files.')
     }
     throw e // Re-throw to prevent silent failures
   }

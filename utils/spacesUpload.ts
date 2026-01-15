@@ -39,22 +39,15 @@ export async function uploadToSpaces(file: File): Promise<string> {
 
 /**
  * Upload image with fallback options
+ * NOTE: Base64 fallback is disabled to prevent localStorage quota issues
  */
 export async function uploadImage(file: File): Promise<string> {
   try {
     // Try DigitalOcean Spaces first
     return await uploadToSpaces(file)
   } catch (error: any) {
-    console.warn('Spaces upload failed, using base64 fallback:', error.message)
-    // Fallback to base64 (browser-specific, not universal)
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        resolve(reader.result as string)
-      }
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
+    // Don't fallback to base64 - it causes localStorage quota issues
+    throw new Error(`Spaces upload failed: ${error.message}. Please ensure DigitalOcean Spaces environment variables are configured, or use an image URL instead.`)
   }
 }
 

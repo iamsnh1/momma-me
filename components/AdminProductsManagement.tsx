@@ -73,35 +73,25 @@ export default function AdminProductsManagement() {
       return
     }
     
-    // Upload all files
+    // Upload all files - FORCE Spaces upload, don't allow base64 fallback
     try {
       const uploadedImages = await Promise.all(
         fileArray.map(async (file) => {
           try {
             const imageUrl = await uploadImage(file)
+            // If it's not a URL (base64), throw error
+            if (!isImageURL(imageUrl)) {
+              throw new Error('Image must be uploaded to Spaces. Base64 images are not allowed due to storage limits.')
+            }
             return imageUrl
           } catch (error: any) {
-            console.warn(`Failed to upload ${file.name}, using base64:`, error.message)
-            // Fallback to base64
-            return new Promise<string>((resolve, reject) => {
-              const reader = new FileReader()
-              reader.onloadend = () => resolve(reader.result as string)
-              reader.onerror = reject
-              reader.readAsDataURL(file)
-            })
+            console.error(`Failed to upload ${file.name}:`, error.message)
+            throw new Error(`Failed to upload ${file.name}: ${error.message}\n\nPlease ensure DigitalOcean Spaces is configured with environment variables.`)
           }
         })
       )
       
-      const cloudUrls = uploadedImages.filter(url => isImageURL(url))
-      const localImages = uploadedImages.filter(url => !isImageURL(url))
-      
-      if (cloudUrls.length > 0) {
-        alert(`✅ ${cloudUrls.length} image(s) uploaded to cloud! They will be visible to all users.`)
-      }
-      if (localImages.length > 0) {
-        alert(`⚠️ ${localImages.length} image(s) saved locally (base64). They will only be visible on this device. For universal access, use image URLs.`)
-      }
+      alert(`✅ ${uploadedImages.length} image(s) uploaded to DigitalOcean Spaces! They will be visible to all users.`)
       
       setFormData((prev: any) => ({
         ...prev,
@@ -109,7 +99,7 @@ export default function AdminProductsManagement() {
       }))
     } catch (error: any) {
       console.error('Error processing files:', error)
-      alert('Error uploading images. Please try again.')
+      alert(`❌ ${error.message}\n\nPlease:\n1. Check DigitalOcean Spaces environment variables are set\n2. Or use image URLs instead of file uploads`)
     }
   }
 
