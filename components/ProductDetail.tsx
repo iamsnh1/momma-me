@@ -5,9 +5,11 @@ import { FiHeart, FiChevronLeft, FiChevronDown, FiChevronUp, FiShoppingCart } fr
 import { useCartStore, Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function ProductDetail({ productId }: { productId: string }) {
   const { getProduct, getAllProducts, initialize } = useProductStore()
+  const router = useRouter()
   
   useEffect(() => {
     initialize()
@@ -63,9 +65,27 @@ export default function ProductDetail({ productId }: { productId: string }) {
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
-            <Link href="/" className="hover:text-purple">Home</Link>
+            <a 
+              href="/" 
+              className="hover:text-purple transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault()
+                router.push('/')
+              }}
+            >
+              Home
+            </a>
             <span>/</span>
-            <Link href="/products" className="hover:text-purple">Products</Link>
+            <a 
+              href="/products" 
+              className="hover:text-purple transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault()
+                router.push('/products')
+              }}
+            >
+              Products
+            </a>
             <span>/</span>
             <span className="text-purple font-semibold">{product.name}</span>
           </div>

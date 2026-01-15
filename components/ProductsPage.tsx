@@ -6,7 +6,7 @@ import { useCartStore, Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import { useCategoryStore } from '@/store/categoryStore'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 const brands = ['Momma & Me', 'BabySafe', 'TinyTot', 'LittleOne', 'PureBaby']
 const ageRanges = ['0-3 months', '3-6 months', '6-12 months', '1-2 years', '2-3 years']
@@ -15,6 +15,7 @@ export default function ProductsPage() {
   const { getAllProducts, initialize } = useProductStore()
   const { getActiveCategories, initialize: initializeCategories } = useCategoryStore()
   const searchParams = useSearchParams()
+  const router = useRouter()
   
   useEffect(() => {
     initialize()
@@ -323,7 +324,16 @@ export default function ProductsPage() {
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
-            <Link href="/" className="hover:text-purple">Home</Link>
+            <a 
+              href="/" 
+              className="hover:text-purple transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault()
+                router.push('/')
+              }}
+            >
+              Home
+            </a>
             <FiChevronRight className="w-4 h-4" />
             <span className="text-purple font-semibold">Products</span>
           </div>
