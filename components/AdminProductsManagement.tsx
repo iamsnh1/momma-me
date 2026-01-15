@@ -57,7 +57,6 @@ export default function AdminProductsManagement() {
   })
   
   const [isDragging, setIsDragging] = useState(false)
-  
   const [isUploading, setIsUploading] = useState(false)
   
   const handleFileUpload = async (files: FileList | null) => {
