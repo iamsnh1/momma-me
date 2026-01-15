@@ -105,26 +105,56 @@ const saveProducts = (products: Product[]) => {
       return
     }
     
-    // Save new data
-    localStorage.setItem(STORAGE_KEY, dataToSave)
-    // Mark that we've saved data with timestamp
-    localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-    localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-    console.log(`✅ Saved ${productsWithoutBase64.length} products to localStorage (${dataSizeMB} MB)`)
+    // Try to save - if it fails due to quota, try cleaning more
+    try {
+      localStorage.setItem(STORAGE_KEY, dataToSave)
+      localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
+      localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
+      console.log(`✅ Saved ${productsWithoutBase64.length} products to localStorage (${dataSizeMB} MB)`)
+    } catch (saveError: any) {
+      if (saveError.name === 'QuotaExceededError' || saveError instanceof DOMException && saveError.name === 'QuotaExceededError') {
+        console.warn('Quota exceeded, trying to clean more...')
+        // Remove all products with any images (keep only products without images)
+        const minimalProducts = productsWithoutBase64.map(p => ({
+          ...p,
+          image: '' // Remove all images to save space
+        }))
+        const minimalData = JSON.stringify(minimalProducts)
+        try {
+          localStorage.setItem(STORAGE_KEY, minimalData)
+          localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
+          localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
+          console.log(`✅ Saved ${minimalProducts.length} products without images (quota was full)`)
+          const errorMsg = '⚠️ Storage quota was full!\n\n' +
+            'Images were removed to save space.\n\n' +
+            'To fix this:\n' +
+            '1. Add DigitalOcean Spaces environment variables\n' +
+            '2. Use image URLs from Spaces (not base64)\n' +
+            '3. Clear browser cache: localStorage.clear()'
+          alert(errorMsg)
+          throw new Error('Storage quota exceeded. Images were removed. Please use image URLs from Spaces.')
+        } catch (minimalError: any) {
+          // Even minimal save failed - localStorage is completely full
+          const errorMsg = '❌ Storage quota completely full!\n\n' +
+            'Please:\n' +
+            '1. Open browser console (F12)\n' +
+            '2. Run: localStorage.clear()\n' +
+            '3. Refresh the page\n' +
+            '4. Add DigitalOcean Spaces environment variables\n' +
+            '5. Use image URLs instead of uploading files'
+          alert(errorMsg)
+          throw new Error('Storage quota completely full. Please clear localStorage and use Spaces for images.')
+        }
+      }
+      throw saveError
+    }
   } catch (e: any) {
     console.error('Error saving products to localStorage:', e)
-    // Check if it's a quota error
-    if (e instanceof DOMException && e.name === 'QuotaExceededError' || e.name === 'QuotaExceededError') {
-      const errorMsg = '❌ Storage quota exceeded!\n\n' +
-        'Solutions:\n' +
-        '1. Use image URLs from DigitalOcean Spaces (not base64)\n' +
-        '2. Clear browser cache/localStorage\n' +
-        '3. Remove products with large images\n' +
-        '4. Make sure Spaces environment variables are set'
-      alert(errorMsg)
-      throw new Error('Storage quota exceeded. Please use image URLs from Spaces instead of uploading files.')
+    // Re-throw with helpful message
+    if (e.message && !e.message.includes('quota')) {
+      throw new Error(`Failed to save products: ${e.message}`)
     }
-    throw e // Re-throw to prevent silent failures
+    throw e
   }
 }
 
