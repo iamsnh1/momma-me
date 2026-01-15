@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiEye, FiEyeOff, FiChevronUp, FiChevronDown } from 'react-icons/fi'
 import { useBannerStore, Banner } from '@/store/bannerStore'
+import { uploadImage, isImageURL } from '@/utils/imageUpload'
 
 export default function AdminBannersManagement() {
   const { banners, addBanner, updateBanner, deleteBanner, initialize } = useBannerStore()
@@ -201,14 +202,24 @@ export default function AdminBannersManagement() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Banners & Advertisements</h1>
           <p className="text-gray-600 mt-1">Manage homepage banners and promotional content</p>
-          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800 font-semibold mb-1">📍 Banner Locations:</p>
-            <ul className="text-xs text-blue-700 space-y-1">
-              <li>• <strong>Hero:</strong> Main carousel at top of homepage</li>
-              <li>• <strong>Boutique:</strong> "Premium Boutiques" section on homepage</li>
-              <li>• <strong>Promotional/Advertisement:</strong> Other sections</li>
-            </ul>
-            <p className="text-xs text-blue-600 mt-2">💡 Tip: Refresh the homepage after saving to see changes</p>
+          <div className="mt-2 space-y-2">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 font-semibold mb-1">📍 Banner Locations:</p>
+              <ul className="text-xs text-blue-700 space-y-1">
+                <li>• <strong>Hero:</strong> Main carousel at top of homepage</li>
+                <li>• <strong>Boutique:</strong> "Premium Boutiques" section on homepage</li>
+                <li>• <strong>Promotional/Advertisement:</strong> Other sections</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-yellow-50 border border-yellow-300 rounded-lg">
+              <p className="text-sm text-yellow-800 font-semibold mb-1">⚠️ Image Storage Notice:</p>
+              <p className="text-xs text-yellow-700 mb-2">
+                <strong>For images to be visible to ALL users:</strong> Use image URLs from hosting services (Imgur, ImgBB, etc.) instead of direct file uploads.
+              </p>
+              <p className="text-xs text-yellow-600">
+                📖 See <a href="https://github.com/iamsnh1/momma-me/blob/main/IMAGE_UPLOAD_GUIDE.md" target="_blank" className="underline font-semibold">Image Upload Guide</a> for instructions.
+              </p>
+            </div>
           </div>
         </div>
         <div className="flex flex-col items-end space-y-2">
@@ -309,7 +320,7 @@ export default function AdminBannersManagement() {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0]
                       if (file) {
                         setIsProcessingImage(true)
@@ -321,98 +332,55 @@ export default function AdminBannersManagement() {
                           return
                         }
                         
-                        // Compress image before converting to base64 with automatic size adjustment
-                        const reader = new FileReader()
-                        reader.onloadend = () => {
-                          const img = new Image()
-                          img.onload = () => {
-                            // Function to compress image with given quality and max size
-                            const compressImage = (maxWidth: number, maxHeight: number, quality: number): string => {
-                              const canvas = document.createElement('canvas')
-                              let width = img.width
-                              let height = img.height
-                              
-                              // Calculate new dimensions to fit within max
-                              if (width > height) {
-                                if (width > maxWidth) {
-                                  height = (height * maxWidth) / width
-                                  width = maxWidth
-                                }
-                              } else {
-                                if (height > maxHeight) {
-                                  width = (width * maxHeight) / height
-                                  height = maxHeight
-                                }
-                              }
-                              
-                              canvas.width = width
-                              canvas.height = height
-                              
-                              const ctx = canvas.getContext('2d')
-                              if (!ctx) return reader.result as string
-                              
-                              ctx.drawImage(img, 0, 0, width, height)
-                              return canvas.toDataURL('image/jpeg', quality)
-                            }
-                            
-                            // Try progressively smaller sizes and lower quality until it fits
-                            const MAX_BASE64_SIZE = 800 * 1024 // 800KB base64 (safe limit for localStorage)
-                            let compressedBase64 = ''
-                            let quality = 0.85
-                            let maxWidth = 1200
-                            let maxHeight = 800
-                            
-                            // Try different compression levels
-                            for (let attempt = 0; attempt < 5; attempt++) {
-                              compressedBase64 = compressImage(maxWidth, maxHeight, quality)
-                              
-                              // Check if size is acceptable
-                              if (compressedBase64.length < MAX_BASE64_SIZE) {
-                                break
-                              }
-                              
-                              // Reduce quality and size for next attempt
-                              quality = Math.max(0.5, quality - 0.1)
-                              maxWidth = Math.max(800, maxWidth - 200)
-                              maxHeight = Math.max(600, maxHeight - 150)
-                            }
-                            
-                            const finalSize = compressedBase64.length
-                            const sizeKB = (finalSize / 1024).toFixed(2)
-                            console.log(`Image compressed: ${file.size} bytes → ${finalSize} bytes (${sizeKB} KB), Quality: ${(quality * 100).toFixed(0)}%, Size: ${maxWidth}x${maxHeight}`)
-                            
-                            if (finalSize > MAX_BASE64_SIZE) {
-                              alert(`⚠️ Image is still large (${sizeKB} KB). It may not save properly. Please use a smaller image or image URL instead.`)
-                            }
-                            
-                            setFormData({ ...formData, image: compressedBase64 })
-                            setIsProcessingImage(false)
-                          }
-                          img.onerror = () => {
-                            alert('Error loading image. Please try a different image.')
-                            setIsProcessingImage(false)
-                            e.target.value = ''
-                          }
-                          img.src = reader.result as string
-                        }
-                        reader.onerror = () => {
-                          alert('Error reading file. Please try again.')
-                          e.target.value = ''
+                        try {
+                          // Try to upload to cloud hosting first (for universal access)
+                          const imageUrl = await uploadImage(file)
+                          setFormData({ ...formData, image: imageUrl })
                           setIsProcessingImage(false)
+                          
+                          if (isImageURL(imageUrl)) {
+                            alert('✅ Image uploaded to cloud! It will be visible to all users.')
+                          } else {
+                            alert('⚠️ Image saved locally (base64). It will only be visible on this device. For universal access, please use an image URL or configure cloud hosting.')
+                          }
+                        } catch (error: any) {
+                          alert(`Error uploading image: ${error.message}\n\nFalling back to local storage (base64). Note: This will only be visible on this device.`)
+                          // Fallback to base64
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setFormData({ ...formData, image: reader.result as string })
+                            setIsProcessingImage(false)
+                          }
+                          reader.onerror = () => {
+                            alert('Error reading file. Please try again.')
+                            e.target.value = ''
+                            setIsProcessingImage(false)
+                          }
+                          reader.readAsDataURL(file)
                         }
-                        reader.readAsDataURL(file)
                       }
                     }}
                     className="w-full px-4 py-3 border-2 border-purple rounded-lg focus:outline-none focus:ring-2 focus:ring-purple bg-white cursor-pointer hover:bg-purple-50 transition-colors"
                   />
-                  <p className="text-xs text-gray-600 mt-2">Supported formats: JPG, PNG, WEBP | Maximum size: 5MB (auto-compressed)</p>
+                  <p className="text-xs text-gray-600 mt-2">Supported formats: JPG, PNG, WEBP | Maximum size: 5MB</p>
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                    <p className="text-yellow-800 font-semibold mb-1">⚠️ Important: Image Storage</p>
+                    <p className="text-yellow-700">
+                      • <strong>Image URLs:</strong> Visible to all users (recommended)<br/>
+                      • <strong>Uploaded files:</strong> Currently saved locally (only visible on this device)<br/>
+                      • <strong>For universal access:</strong> Use image URLs from hosting services (Imgur, ImgBB, etc.)
+                    </p>
+                  </div>
                   {isProcessingImage && (
-                    <p className="text-xs text-blue-600 mt-1 animate-pulse">⏳ Processing and auto-compressing image to fit storage...</p>
+                    <p className="text-xs text-blue-600 mt-1 animate-pulse">⏳ Uploading image to cloud...</p>
                   )}
-                  {formData.image && formData.image.startsWith('data:') && !isProcessingImage && (
+                  {formData.image && !isProcessingImage && (
                     <div className="mt-1">
-                      <p className="text-xs text-green-600">✅ Image loaded and auto-compressed</p>
-                      <p className="text-xs text-gray-500">Size: ~{((formData.image.length * 3) / 4 / 1024).toFixed(0)} KB (optimized for storage)</p>
+                      {isImageURL(formData.image) ? (
+                        <p className="text-xs text-green-600">✅ Image URL - Visible to all users</p>
+                      ) : (
+                        <p className="text-xs text-yellow-600">⚠️ Local image (base64) - Only visible on this device</p>
+                      )}
                     </div>
                   )}
                 </div>

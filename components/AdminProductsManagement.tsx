@@ -5,6 +5,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiUpload, FiEye } from 'react-i
 import { Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import { useCategoryStore } from '@/store/categoryStore'
+import { uploadImage, isImageURL } from '@/utils/imageUpload'
 
 export default function AdminProductsManagement() {
   const { products, addProduct, updateProduct, deleteProduct, initialize } = useProductStore()
@@ -56,7 +57,7 @@ export default function AdminProductsManagement() {
   
   const [isDragging, setIsDragging] = useState(false)
   
-  const handleFileUpload = (files: FileList | null) => {
+  const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) {
       console.log('No files selected')
       return
@@ -72,33 +73,44 @@ export default function AdminProductsManagement() {
       return
     }
     
-    // Read all files
-    const readers = fileArray.map(file => {
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const result = reader.result as string
-          console.log('File read successfully:', file.name)
-          resolve(result)
-        }
-        reader.onerror = (error) => {
-          console.error('Error reading file:', file.name, error)
-          reject(error)
-        }
-        reader.readAsDataURL(file)
-      })
-    })
-    
-    Promise.all(readers).then((base64Images) => {
-      console.log(`Successfully loaded ${base64Images.length} image(s)`)
+    // Upload all files
+    try {
+      const uploadedImages = await Promise.all(
+        fileArray.map(async (file) => {
+          try {
+            const imageUrl = await uploadImage(file)
+            return imageUrl
+          } catch (error: any) {
+            console.warn(`Failed to upload ${file.name}, using base64:`, error.message)
+            // Fallback to base64
+            return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onloadend = () => resolve(reader.result as string)
+              reader.onerror = reject
+              reader.readAsDataURL(file)
+            })
+          }
+        })
+      )
+      
+      const cloudUrls = uploadedImages.filter(url => isImageURL(url))
+      const localImages = uploadedImages.filter(url => !isImageURL(url))
+      
+      if (cloudUrls.length > 0) {
+        alert(`✅ ${cloudUrls.length} image(s) uploaded to cloud! They will be visible to all users.`)
+      }
+      if (localImages.length > 0) {
+        alert(`⚠️ ${localImages.length} image(s) saved locally (base64). They will only be visible on this device. For universal access, use image URLs.`)
+      }
+      
       setFormData((prev: any) => ({
         ...prev,
-        images: [...(prev.images || []), ...base64Images]
+        images: [...(prev.images || []), ...uploadedImages]
       }))
-    }).catch((error) => {
+    } catch (error: any) {
       console.error('Error processing files:', error)
-      alert('Error reading image files. Please try again.')
-    })
+      alert('Error uploading images. Please try again.')
+    }
   }
 
   const filteredProducts = products.filter(p => {
