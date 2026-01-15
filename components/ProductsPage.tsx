@@ -82,6 +82,26 @@ export default function ProductsPage() {
     setTimeout(() => setNotification(null), 3000)
   }
 
+  // Calculate max price from products for price range slider
+  const maxProductPrice = useMemo(() => {
+    if (allProducts.length === 0) return 500
+    const prices = allProducts.map(p => {
+      const price = p.salePrice && p.salePrice < (p.originalPrice || p.price) 
+        ? p.salePrice 
+        : (p.originalPrice || p.price)
+      return price
+    })
+    const maxPrice = Math.max(...prices)
+    return Math.ceil(maxPrice / 50) * 50 // Round up to nearest 50
+  }, [allProducts])
+  
+  // Update price range max when products are loaded
+  useEffect(() => {
+    if (maxProductPrice > 500 && priceRange[1] === 500) {
+      setPriceRange([0, maxProductPrice])
+    }
+  }, [maxProductPrice, priceRange])
+
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
 
@@ -126,12 +146,49 @@ export default function ProductsPage() {
       filtered = filtered.filter(p => selectedCategories.includes(p.category))
     }
 
+    // Age Range filter
+    if (selectedAges.length > 0) {
+      filtered = filtered.filter(p => {
+        const productAny = p as any
+        const productAgeRange = productAny.ageRange || []
+        // Check if product has any of the selected age ranges
+        return selectedAges.some(age => {
+          // Match different age range formats
+          const ageLower = age.toLowerCase()
+          return productAgeRange.some((productAge: string) => {
+            const productAgeLower = productAge.toLowerCase()
+            // Handle formats like "0-3m", "0-3 months", etc.
+            if (ageLower.includes('0-3') && (productAgeLower.includes('0-3') || productAgeLower.includes('0-3m'))) return true
+            if (ageLower.includes('3-6') && (productAgeLower.includes('3-6') || productAgeLower.includes('3-6m'))) return true
+            if (ageLower.includes('6-12') && (productAgeLower.includes('6-12') || productAgeLower.includes('6-12m'))) return true
+            if (ageLower.includes('1-2') && (productAgeLower.includes('1-2') || productAgeLower.includes('1-2y'))) return true
+            if (ageLower.includes('2-3') && (productAgeLower.includes('2-3') || productAgeLower.includes('2-3y'))) return true
+            return productAgeLower.includes(ageLower) || ageLower.includes(productAgeLower)
+          })
+        })
+      })
+    }
+
+    // Brand filter
+    if (selectedBrands.length > 0) {
+      filtered = filtered.filter(p => {
+        const productAny = p as any
+        const productBrand = productAny.brand || productAny.brandName || ''
+        return selectedBrands.some(brand => 
+          productBrand.toLowerCase().includes(brand.toLowerCase()) ||
+          brand.toLowerCase().includes(productBrand.toLowerCase())
+        )
+      })
+    }
+
     // Price filter - use salePrice if available, otherwise use price
     filtered = filtered.filter(p => {
       const productPrice = p.salePrice && p.salePrice < (p.originalPrice || p.price) 
         ? p.salePrice 
         : (p.originalPrice || p.price)
-      return productPrice >= priceRange[0] && productPrice <= priceRange[1]
+      // If max is at or above maxProductPrice, show all products
+      const maxFilter = priceRange[1] >= maxProductPrice ? Infinity : priceRange[1]
+      return productPrice >= priceRange[0] && productPrice <= maxFilter
     })
 
     // Rating filter
@@ -166,7 +223,7 @@ export default function ProductsPage() {
     }
 
     return filtered
-  }, [allProducts, searchQuery, selectedCategories, priceRange, minRating, sortBy])
+  }, [allProducts, searchQuery, selectedCategories, selectedAges, selectedBrands, priceRange, minRating, sortBy, maxProductPrice])
 
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev =>
@@ -194,7 +251,7 @@ export default function ProductsPage() {
 
   const clearFilters = () => {
     setSelectedCategories([])
-    setPriceRange([0, 500])
+    setPriceRange([0, maxProductPrice])
     setSelectedAges([])
     setSelectedBrands([])
     setMinRating(0)
@@ -237,14 +294,15 @@ export default function ProductsPage() {
           <input
             type="range"
             min="0"
-            max="500"
+            max={maxProductPrice}
+            step="10"
             value={priceRange[1]}
             onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
             className="w-full"
           />
           <div className="flex justify-between text-sm text-gray-600">
             <span>₹{priceRange[0]}</span>
-            <span>₹{priceRange[1]}+</span>
+            <span>₹{priceRange[1] >= maxProductPrice ? `${priceRange[1]}+` : priceRange[1]}</span>
           </div>
         </div>
       </div>
