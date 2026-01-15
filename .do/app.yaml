@@ -7,7 +7,7 @@ services:
       repo: iamsnh1/momma-me
       branch: main
       deploy_on_push: true
-    build_command: npm ci && npm run build
+    build_command: npm install && npm run build
     run_command: npm start
     environment_slug: node-js
     instance_count: 1

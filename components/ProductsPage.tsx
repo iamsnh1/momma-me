@@ -113,6 +113,7 @@ export default function ProductsPage() {
 
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
+    const initialCount = filtered.length
 
     // Comprehensive search filter - searches ALL available product fields
     if (searchQuery.trim()) {
