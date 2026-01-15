@@ -65,19 +65,35 @@ export default function ProductDetail({ productId }: { productId: string }) {
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
-            <Link 
+            <a 
               href="/"
+              onClick={(e) => {
+                e.preventDefault()
+                try {
+                  router.push('/')
+                } catch (error) {
+                  window.location.href = '/'
+                }
+              }}
               className="hover:text-purple transition-colors cursor-pointer"
             >
               Home
-            </Link>
+            </a>
             <span>/</span>
-            <Link 
+            <a 
               href="/products"
+              onClick={(e) => {
+                e.preventDefault()
+                try {
+                  router.push('/products')
+                } catch (error) {
+                  window.location.href = '/products'
+                }
+              }}
               className="hover:text-purple transition-colors cursor-pointer"
             >
               Products
-            </Link>
+            </a>
             <span>/</span>
             <span className="text-purple font-semibold">{product.name}</span>
           </div>

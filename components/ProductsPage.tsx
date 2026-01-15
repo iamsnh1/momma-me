@@ -411,12 +411,20 @@ export default function ProductsPage() {
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
-            <Link 
+            <a 
               href="/"
+              onClick={(e) => {
+                e.preventDefault()
+                try {
+                  router.push('/')
+                } catch (error) {
+                  window.location.href = '/'
+                }
+              }}
               className="hover:text-purple transition-colors cursor-pointer"
             >
               Home
-            </Link>
+            </a>
             <FiChevronRight className="w-4 h-4" />
             <span className="text-purple font-semibold">Products</span>
           </div>
