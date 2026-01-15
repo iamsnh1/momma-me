@@ -28,6 +28,7 @@ export default function AdminProductsManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [sortBy, setSortBy] = useState('name')
+  const [isUploading, setIsUploading] = useState(false)
   const [formData, setFormData] = useState<any>({
     name: '',
     sku: '',
@@ -57,6 +58,8 @@ export default function AdminProductsManagement() {
   
   const [isDragging, setIsDragging] = useState(false)
   
+  const [isUploading, setIsUploading] = useState(false)
+  
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) {
       console.log('No files selected')
@@ -73,25 +76,33 @@ export default function AdminProductsManagement() {
       return
     }
     
+    setIsUploading(true)
+    
     // Upload all files - FORCE Spaces upload, don't allow base64 fallback
     try {
+      console.log('Starting upload to DigitalOcean Spaces...')
       const uploadedImages = await Promise.all(
-        fileArray.map(async (file) => {
+        fileArray.map(async (file, index) => {
           try {
+            console.log(`Uploading file ${index + 1}/${fileArray.length}: ${file.name}`)
             const imageUrl = await uploadImage(file)
+            console.log(`✅ Upload successful: ${imageUrl}`)
+            
             // If it's not a URL (base64), throw error
             if (!isImageURL(imageUrl)) {
               throw new Error('Image must be uploaded to Spaces. Base64 images are not allowed due to storage limits.')
             }
             return imageUrl
           } catch (error: any) {
-            console.error(`Failed to upload ${file.name}:`, error.message)
-            throw new Error(`Failed to upload ${file.name}: ${error.message}\n\nPlease ensure DigitalOcean Spaces is configured with environment variables.`)
+            console.error(`❌ Failed to upload ${file.name}:`, error)
+            const errorMsg = error.message || 'Unknown error'
+            throw new Error(`Failed to upload ${file.name}: ${errorMsg}`)
           }
         })
       )
       
-      alert(`✅ ${uploadedImages.length} image(s) uploaded to DigitalOcean Spaces! They will be visible to all users.`)
+      console.log('All uploads completed:', uploadedImages)
+      alert(`✅ ${uploadedImages.length} image(s) uploaded to DigitalOcean Spaces!\n\nURLs:\n${uploadedImages.join('\n')}\n\nThese will be visible to all users.`)
       
       setFormData((prev: any) => ({
         ...prev,
@@ -99,7 +110,10 @@ export default function AdminProductsManagement() {
       }))
     } catch (error: any) {
       console.error('Error processing files:', error)
-      alert(`❌ ${error.message}\n\nPlease:\n1. Check DigitalOcean Spaces environment variables are set\n2. Or use image URLs instead of file uploads`)
+      const errorDetails = error.message || 'Unknown error'
+      alert(`❌ Upload Failed!\n\n${errorDetails}\n\nTroubleshooting:\n1. Check browser console for details (F12)\n2. Verify DigitalOcean Spaces environment variables are set\n3. Check DigitalOcean App logs for API errors\n4. Try using image URLs instead of file uploads`)
+    } finally {
+      setIsUploading(false)
     }
   }
 

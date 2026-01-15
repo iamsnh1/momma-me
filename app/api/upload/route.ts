@@ -21,10 +21,27 @@ const s3Client = new S3Client({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📥 Upload API called')
+    console.log('🔍 Checking Spaces configuration...')
+    console.log('SPACES_ENDPOINT:', SPACES_ENDPOINT ? '✅ Set' : '❌ Missing')
+    console.log('SPACES_KEY:', SPACES_KEY ? '✅ Set' : '❌ Missing')
+    console.log('SPACES_SECRET:', SPACES_SECRET ? '✅ Set' : '❌ Missing')
+    console.log('SPACES_BUCKET:', SPACES_BUCKET ? '✅ Set' : '❌ Missing')
+    console.log('SPACES_REGION:', SPACES_REGION)
+    
     // Check if Spaces is configured
     if (!SPACES_ENDPOINT || !SPACES_KEY || !SPACES_SECRET || !SPACES_BUCKET) {
+      const missing = []
+      if (!SPACES_ENDPOINT) missing.push('SPACES_ENDPOINT')
+      if (!SPACES_KEY) missing.push('SPACES_ACCESS_KEY_ID')
+      if (!SPACES_SECRET) missing.push('SPACES_SECRET_ACCESS_KEY')
+      if (!SPACES_BUCKET) missing.push('SPACES_BUCKET')
+      
+      console.error('❌ Missing environment variables:', missing.join(', '))
       return NextResponse.json(
-        { error: 'DigitalOcean Spaces not configured. Please set environment variables.' },
+        { 
+          error: `DigitalOcean Spaces not configured. Missing: ${missing.join(', ')}. Please set these environment variables in DigitalOcean App Platform settings.` 
+        },
         { status: 500 }
       )
     }

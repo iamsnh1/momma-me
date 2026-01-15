@@ -14,25 +14,56 @@ const SPACES_CDN_URL = process.env.NEXT_PUBLIC_SPACES_CDN_URL || ''
  */
 export async function uploadToSpaces(file: File): Promise<string> {
   try {
+    console.log('📤 Preparing to upload to Spaces:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`)
+    
     // Create FormData to send to our API route
     const formData = new FormData()
     formData.append('image', file)
     formData.append('folder', 'uploads') // Optional: organize by folder
 
+    console.log('📡 Sending request to /api/upload...')
+    
     // Upload via Next.js API route (secure, server-side)
     const response = await fetch('/api/upload', {
       method: 'POST',
       body: formData,
     })
 
+    console.log('📥 Response status:', response.status, response.statusText)
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Upload failed' }))
-      throw new Error(error.error || 'Failed to upload image')
+      let errorMessage = 'Upload failed'
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.error || errorMessage
+        console.error('❌ API Error:', errorData)
+      } catch (e) {
+        const text = await response.text()
+        console.error('❌ API Error (text):', text)
+        errorMessage = text || errorMessage
+      }
+      
+      // Provide helpful error messages
+      if (response.status === 500) {
+        if (errorMessage.includes('not configured')) {
+          throw new Error('DigitalOcean Spaces not configured. Please add environment variables in DigitalOcean App Platform settings.')
+        }
+        throw new Error(`Server error: ${errorMessage}`)
+      }
+      
+      throw new Error(errorMessage)
     }
 
     const data = await response.json()
+    console.log('✅ Upload successful! URL:', data.url)
+    
+    if (!data.url) {
+      throw new Error('Upload succeeded but no URL returned')
+    }
+    
     return data.url
   } catch (error: any) {
+    console.error('❌ Upload error details:', error)
     throw new Error(`Image upload failed: ${error.message}`)
   }
 }
