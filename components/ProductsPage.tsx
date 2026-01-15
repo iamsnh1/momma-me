@@ -56,7 +56,6 @@ export default function ProductsPage() {
   }, [searchQuery, allProducts.length])
   
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [priceRange, setPriceRange] = useState([0, 500])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
   const [minRating, setMinRating] = useState(0)
@@ -65,6 +64,29 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [notification, setNotification] = useState<string | null>(null)
   const addToCart = useCartStore((state) => state.addToCart)
+
+  // Calculate max price from products for price range slider
+  const maxProductPrice = useMemo(() => {
+    if (allProducts.length === 0) return 500
+    const prices = allProducts.map(p => {
+      const price = p.salePrice && p.salePrice < (p.originalPrice || p.price) 
+        ? p.salePrice 
+        : (p.originalPrice || p.price)
+      return price
+    })
+    const maxPrice = Math.max(...prices)
+    return Math.ceil(maxPrice / 50) * 50 // Round up to nearest 50
+  }, [allProducts])
+  
+  // Initialize price range with maxProductPrice
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500])
+  
+  // Update price range max when products are loaded
+  useEffect(() => {
+    if (maxProductPrice > 0) {
+      setPriceRange([0, maxProductPrice])
+    }
+  }, [maxProductPrice])
 
   // Update selected categories when category param changes
   useEffect(() => {
@@ -81,26 +103,6 @@ export default function ProductsPage() {
     setNotification(`Added ${product.name} to cart!`)
     setTimeout(() => setNotification(null), 3000)
   }
-
-  // Calculate max price from products for price range slider
-  const maxProductPrice = useMemo(() => {
-    if (allProducts.length === 0) return 500
-    const prices = allProducts.map(p => {
-      const price = p.salePrice && p.salePrice < (p.originalPrice || p.price) 
-        ? p.salePrice 
-        : (p.originalPrice || p.price)
-      return price
-    })
-    const maxPrice = Math.max(...prices)
-    return Math.ceil(maxPrice / 50) * 50 // Round up to nearest 50
-  }, [allProducts])
-  
-  // Update price range max when products are loaded
-  useEffect(() => {
-    if (maxProductPrice > 500 && priceRange[1] === 500) {
-      setPriceRange([0, maxProductPrice])
-    }
-  }, [maxProductPrice, priceRange])
 
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts]
@@ -143,7 +145,9 @@ export default function ProductsPage() {
 
     // Category filter
     if (selectedCategories.length > 0) {
+      const beforeCount = filtered.length
       filtered = filtered.filter(p => selectedCategories.includes(p.category))
+      console.log(`📂 Category filter: ${beforeCount} → ${filtered.length} products (selected: ${selectedCategories.join(', ')})`)
     }
 
     // Age Range filter
@@ -151,12 +155,18 @@ export default function ProductsPage() {
       filtered = filtered.filter(p => {
         const productAny = p as any
         const productAgeRange = productAny.ageRange || []
+        
+        // If product has no age range data, show it (better UX)
+        if (!productAgeRange || productAgeRange.length === 0) {
+          return true
+        }
+        
         // Check if product has any of the selected age ranges
         return selectedAges.some(age => {
           // Match different age range formats
           const ageLower = age.toLowerCase()
           return productAgeRange.some((productAge: string) => {
-            const productAgeLower = productAge.toLowerCase()
+            const productAgeLower = String(productAge).toLowerCase()
             // Handle formats like "0-3m", "0-3 months", etc.
             if (ageLower.includes('0-3') && (productAgeLower.includes('0-3') || productAgeLower.includes('0-3m'))) return true
             if (ageLower.includes('3-6') && (productAgeLower.includes('3-6') || productAgeLower.includes('3-6m'))) return true
@@ -173,15 +183,22 @@ export default function ProductsPage() {
     if (selectedBrands.length > 0) {
       filtered = filtered.filter(p => {
         const productAny = p as any
-        const productBrand = productAny.brand || productAny.brandName || ''
-        return selectedBrands.some(brand => 
-          productBrand.toLowerCase().includes(brand.toLowerCase()) ||
-          brand.toLowerCase().includes(productBrand.toLowerCase())
-        )
+        const productBrand = String(productAny.brand || productAny.brandName || '').toLowerCase()
+        
+        // If product has no brand data, show it (better UX)
+        if (!productBrand || productBrand.trim() === '') {
+          return true
+        }
+        
+        return selectedBrands.some(brand => {
+          const brandLower = brand.toLowerCase()
+          return productBrand.includes(brandLower) || brandLower.includes(productBrand)
+        })
       })
     }
 
     // Price filter - use salePrice if available, otherwise use price
+    const beforePriceCount = filtered.length
     filtered = filtered.filter(p => {
       const productPrice = p.salePrice && p.salePrice < (p.originalPrice || p.price) 
         ? p.salePrice 
@@ -190,6 +207,9 @@ export default function ProductsPage() {
       const maxFilter = priceRange[1] >= maxProductPrice ? Infinity : priceRange[1]
       return productPrice >= priceRange[0] && productPrice <= maxFilter
     })
+    if (priceRange[0] > 0 || priceRange[1] < maxProductPrice) {
+      console.log(`💰 Price filter (₹${priceRange[0]}-₹${priceRange[1]}): ${beforePriceCount} → ${filtered.length} products`)
+    }
 
     // Rating filter
     if (minRating > 0) {
@@ -222,6 +242,7 @@ export default function ProductsPage() {
         break
     }
 
+    console.log(`🔍 Total filters applied: ${initialCount} → ${filtered.length} products`)
     return filtered
   }, [allProducts, searchQuery, selectedCategories, selectedAges, selectedBrands, priceRange, minRating, sortBy, maxProductPrice])
 
@@ -382,16 +403,14 @@ export default function ProductsPage() {
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
-            <a 
-              href="/" 
-              className="hover:text-purple transition-colors cursor-pointer"
-              onClick={(e) => {
-                e.preventDefault()
-                router.push('/')
+            <button
+              onClick={() => {
+                window.location.href = '/'
               }}
+              className="hover:text-purple transition-colors cursor-pointer text-left"
             >
               Home
-            </a>
+            </button>
             <FiChevronRight className="w-4 h-4" />
             <span className="text-purple font-semibold">Products</span>
           </div>
