@@ -243,15 +243,13 @@ export const useBannerStore = create<BannerStore>((set, get) => ({
   banners: loadBanners(),
 
   initialize: () => {
-    // NEVER overwrite existing data - only load if store is empty
-    const currentBanners = get().banners
-    if (currentBanners.length === 0) {
-      const loaded = loadBanners()
-      if (loaded.length > 0) {
-        set({ banners: loaded })
-      }
+    // Always reload from localStorage to get latest changes
+    // This ensures admin changes are reflected immediately
+    const loaded = loadBanners()
+    if (loaded.length > 0 || get().banners.length === 0) {
+      set({ banners: loaded })
+      console.log(`🔄 Banner store initialized with ${loaded.length} banners`)
     }
-    // If we already have banners, keep them - don't reload
   },
 
   addBanner: (bannerData) => {

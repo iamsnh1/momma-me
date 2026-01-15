@@ -25,9 +25,16 @@ export default function ProductsPage() {
   // Listen for updates from admin panel
   useEffect(() => {
     const handleProductsUpdate = () => {
+      console.log('🔄 Products update event received, refreshing...')
       initialize()
+      initializeCategories()
+      // Force a re-render
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('storage'))
+      }
     }
     const handleCategoriesUpdate = () => {
+      console.log('🔄 Categories update event received, refreshing...')
       initializeCategories()
     }
     

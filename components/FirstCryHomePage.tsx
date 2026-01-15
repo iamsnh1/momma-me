@@ -49,12 +49,23 @@ export default function FirstCryHomePage() {
     
     // Listen for custom events from same window (admin panel)
     const handleBannerUpdate = () => {
+      console.log('🔄 Banner update event received, refreshing...')
       initializeBanners()
+      // Force a re-render
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('storage'))
+      }
     }
     const handleProductsUpdate = () => {
+      console.log('🔄 Products update event received, refreshing...')
       initialize()
+      // Force a re-render
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('storage'))
+      }
     }
     const handleCategoriesUpdate = () => {
+      console.log('🔄 Categories update event received, refreshing...')
       initializeCategories()
     }
     

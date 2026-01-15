@@ -91,17 +91,13 @@ export const useProductStore = create<ProductStore>((set, get) => ({
   products: loadProducts(),
   
   initialize: () => {
-    // NEVER overwrite existing data - only load if store is empty
-    // This ensures admin changes are never lost
-    const currentProducts = get().products
-    if (currentProducts.length === 0) {
-      const loaded = loadProducts()
-      if (loaded.length > 0) {
-        set({ products: loaded })
-      }
+    // Always reload from localStorage to get latest changes
+    // This ensures admin changes are reflected immediately
+    const loaded = loadProducts()
+    if (loaded.length > 0 || get().products.length === 0) {
+      set({ products: loaded })
+      console.log(`🔄 Product store initialized with ${loaded.length} products`)
     }
-    // If we already have products, keep them - don't reload from localStorage
-    // This prevents any accidental data loss
   },
   
   addProduct: (product) => {

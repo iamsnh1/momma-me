@@ -43,14 +43,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     // Check authentication via cookie
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && mounted) {
       const cookies = document.cookie || ''
       const isAuth = cookies.split(';').some(c => c.trim().startsWith('adminAuth='))
-      if (!isAuth && pathname !== '/admin/login') {
+      // Only redirect if not authenticated and not already on login page
+      if (!isAuth && pathname !== '/admin/login' && pathname.startsWith('/admin')) {
         router.push('/admin/login')
       }
     }
-  }, [pathname, router])
+  }, [pathname, router, mounted])
 
   // Close dropdowns when clicking outside
   useEffect(() => {

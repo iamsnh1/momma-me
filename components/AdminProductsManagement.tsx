@@ -144,22 +144,43 @@ export default function AdminProductsManagement() {
       description: formData.shortDescription
     }
     
-    if (editingId) {
-      updateProduct(editingId, productUpdate)
-      setEditingId(null)
-    } else if (isAdding) {
-      const newProduct: Product = {
-        id: Date.now().toString(),
-        ...productUpdate
-      } as Product
-      addProduct(newProduct)
-      setIsAdding(false)
+    try {
+      if (editingId) {
+        updateProduct(editingId, productUpdate)
+        console.log('✅ Product updated:', editingId, productUpdate)
+        setEditingId(null)
+      } else if (isAdding) {
+        const newProduct: Product = {
+          id: Date.now().toString(),
+          ...productUpdate
+        } as Product
+        addProduct(newProduct)
+        console.log('✅ Product added:', newProduct.id, productUpdate)
+        setIsAdding(false)
+      }
+      
+      // Re-initialize to refresh the store
+      initialize()
+      
+      // Dispatch event to refresh frontend
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('productsUpdated'))
+      }
+      
+      // Verify it was saved
+      const savedProducts = typeof window !== 'undefined' ? localStorage.getItem('momma-me-products') : null
+      console.log('Products saved to localStorage:', savedProducts ? 'Yes' : 'No')
+      if (savedProducts) {
+        const parsed = JSON.parse(savedProducts)
+        console.log(`Saved ${parsed.length} products`)
+      }
+      
+      alert('✅ Product saved successfully! Changes will appear on the site. Refresh the page to see updates.')
+      resetForm()
+    } catch (error: any) {
+      alert(`❌ Error saving product: ${error.message || 'Unknown error'}`)
+      console.error('Error saving product:', error)
     }
-    // Dispatch event to refresh frontend
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('productsUpdated'))
-    }
-    resetForm()
   }
 
   const resetForm = () => {
