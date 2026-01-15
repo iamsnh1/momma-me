@@ -56,34 +56,26 @@ const saveProducts = (products: Product[]) => {
       return p
     })
     
-    // Clean up old backups FIRST to free space
+    // Clean up ALL old backups FIRST to free maximum space
     try {
       const backupKeys = Object.keys(localStorage)
         .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
-        .sort()
-        .reverse()
-        .slice(2) // Keep only last 2 (reduced from 3)
+      // Remove ALL backups to free space
       backupKeys.forEach(key => {
         try {
           localStorage.removeItem(key)
+          console.log('Removed old backup:', key)
         } catch (e) {
           console.warn('Failed to remove backup:', key)
         }
       })
+      console.log(`Cleaned up ${backupKeys.length} old backups`)
     } catch (e) {
       console.warn('Failed to clean up backups:', e)
     }
     
-    // Try to create backup (but don't fail if it doesn't work)
-    try {
-      const currentData = localStorage.getItem(STORAGE_KEY)
-      if (currentData && currentData.length < 500 * 1024) { // Only backup if < 500KB
-        const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
-        localStorage.setItem(backupKey, currentData)
-      }
-    } catch (e) {
-      console.warn('Could not create backup (quota may be full):', e)
-    }
+    // DON'T create backups if we're near quota limit - it causes errors
+    // Backups are optional and not worth failing the save operation
     
     // Calculate size before saving
     const dataToSave = JSON.stringify(productsWithoutBase64)
