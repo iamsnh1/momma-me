@@ -65,23 +65,19 @@ export default function ProductDetail({ productId }: { productId: string }) {
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
-            <button
-              onClick={() => {
-                window.location.href = '/'
-              }}
-              className="hover:text-purple transition-colors cursor-pointer text-left"
+            <Link 
+              href="/"
+              className="hover:text-purple transition-colors cursor-pointer"
             >
               Home
-            </button>
+            </Link>
             <span>/</span>
-            <button
-              onClick={() => {
-                window.location.href = '/products'
-              }}
-              className="hover:text-purple transition-colors cursor-pointer text-left"
+            <Link 
+              href="/products"
+              className="hover:text-purple transition-colors cursor-pointer"
             >
               Products
-            </button>
+            </Link>
             <span>/</span>
             <span className="text-purple font-semibold">{product.name}</span>
           </div>

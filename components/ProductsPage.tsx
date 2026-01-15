@@ -403,14 +403,12 @@ export default function ProductsPage() {
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
-            <button
-              onClick={() => {
-                window.location.href = '/'
-              }}
-              className="hover:text-purple transition-colors cursor-pointer text-left"
+            <Link 
+              href="/"
+              className="hover:text-purple transition-colors cursor-pointer"
             >
               Home
-            </button>
+            </Link>
             <FiChevronRight className="w-4 h-4" />
             <span className="text-purple font-semibold">Products</span>
           </div>
