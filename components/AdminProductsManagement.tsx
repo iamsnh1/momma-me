@@ -5,7 +5,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiUpload, FiEye } from 'react-i
 import { Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import { useCategoryStore } from '@/store/categoryStore'
-import { uploadImage, isImageURL } from '@/utils/spacesUpload'
+import { uploadImage, isImageURL } from '@/utils/imgbbUpload'
 
 export default function AdminProductsManagement() {
   const { products, addProduct, updateProduct, deleteProduct, initialize } = useProductStore()
@@ -79,7 +79,7 @@ export default function AdminProductsManagement() {
     
     // Upload all files - FORCE Spaces upload, don't allow base64 fallback
     try {
-      console.log('Starting upload to DigitalOcean Spaces...')
+      console.log('Starting upload to ImgBB...')
       const uploadedImages = await Promise.all(
         fileArray.map(async (file, index) => {
           try {
@@ -87,9 +87,9 @@ export default function AdminProductsManagement() {
             const imageUrl = await uploadImage(file)
             console.log(`✅ Upload successful: ${imageUrl}`)
             
-            // If it's not a URL (base64), throw error
+            // If it's not a URL, throw error
             if (!isImageURL(imageUrl)) {
-              throw new Error('Image must be uploaded to Spaces. Base64 images are not allowed due to storage limits.')
+              throw new Error('Image must be uploaded to ImgBB. Invalid URL returned.')
             }
             return imageUrl
           } catch (error: any) {
@@ -101,7 +101,7 @@ export default function AdminProductsManagement() {
       )
       
       console.log('All uploads completed:', uploadedImages)
-      alert(`✅ ${uploadedImages.length} image(s) uploaded to DigitalOcean Spaces!\n\nURLs:\n${uploadedImages.join('\n')}\n\nThese will be visible to all users.`)
+      alert(`✅ ${uploadedImages.length} image(s) uploaded to ImgBB!\n\nThese will be visible to all users.`)
       
       setFormData((prev: any) => ({
         ...prev,

@@ -140,3 +140,4 @@ After setup:
 
 🎉 **You're all set!** Images will now be stored in DigitalOcean Spaces and accessible to all users!
 
+
