@@ -110,7 +110,7 @@ export default function AdminProductsManagement() {
     } catch (error: any) {
       console.error('Error processing files:', error)
       const errorDetails = error.message || 'Unknown error'
-      alert(`❌ Upload Failed!\n\n${errorDetails}\n\nTroubleshooting:\n1. Check browser console for details (F12)\n2. Verify DigitalOcean Spaces environment variables are set\n3. Check DigitalOcean App logs for API errors\n4. Try using image URLs instead of file uploads`)
+      alert(`❌ Upload Failed!\n\n${errorDetails}\n\nTroubleshooting:\n1. Get a free ImgBB API key at https://api.imgbb.com/\n2. Add NEXT_PUBLIC_IMGBB_API_KEY to environment variables\n3. Redeploy your app\n4. Or use image URLs instead of file uploads`)
     } finally {
       setIsUploading(false)
     }
