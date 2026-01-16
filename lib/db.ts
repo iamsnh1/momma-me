@@ -32,27 +32,39 @@ const DB_DIR = join(process.cwd(), 'data')
 const DB_FILE = join(DB_DIR, 'database.json')
 
 async function ensureDbDir() {
-  if (!existsSync(DB_DIR)) {
-    await mkdir(DB_DIR, { recursive: true })
+  try {
+    if (!existsSync(DB_DIR)) {
+      await mkdir(DB_DIR, { recursive: true })
+    }
+  } catch (e) {
+    console.warn('Could not create DB directory (may be read-only in serverless):', e)
   }
 }
 
 export async function loadDatabase(): Promise<Database> {
-  await ensureDbDir()
   try {
+    await ensureDbDir()
     if (existsSync(DB_FILE)) {
       const data = await readFile(DB_FILE, 'utf-8')
       return JSON.parse(data)
     }
   } catch (e) {
     console.error('Error loading database:', e)
+    // Return empty database if file doesn't exist or can't be read
   }
   return { products: [], images: [], banners: [], categories: [] }
 }
 
 export async function saveDatabase(data: Database): Promise<void> {
-  await ensureDbDir()
-  await writeFile(DB_FILE, JSON.stringify(data, null, 2), 'utf-8')
+  try {
+    await ensureDbDir()
+    await writeFile(DB_FILE, JSON.stringify(data, null, 2), 'utf-8')
+  } catch (e) {
+    console.error('Error saving database (filesystem may be read-only in serverless):', e)
+    // In serverless, we can't write to filesystem at runtime
+    // This is expected - data should be in a real database
+    throw new Error('Cannot save to filesystem in serverless environment. Please use a database.')
+  }
 }
 
 // Product operations
