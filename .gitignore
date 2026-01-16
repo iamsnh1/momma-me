@@ -36,3 +36,5 @@ next-env.d.ts
 
 # database files (images stored in database)
 /data/images.json
+# Keep database.json - it's the main database file
+# /data/database.json
