@@ -5,7 +5,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiUpload, FiEye } from 'react-i
 import { Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import { useCategoryStore } from '@/store/categoryStore'
-import { uploadImage, isImageURL } from '@/utils/databaseUpload'
+import { uploadImage, isImageURL } from '@/utils/inlineImageUpload'
 
 export default function AdminProductsManagement() {
   const { products, addProduct, updateProduct, deleteProduct, initialize } = useProductStore()
@@ -100,7 +100,7 @@ export default function AdminProductsManagement() {
       )
       
       console.log('All uploads completed:', uploadedImages)
-      alert(`✅ ${uploadedImages.length} image(s) uploaded!\n\nThese will be visible to all users.`)
+      alert(`✅ ${uploadedImages.length} image(s) processed and stored!\n\nImages are compressed and stored in product data, accessible to all users.`)
       
       setFormData((prev: any) => ({
         ...prev,

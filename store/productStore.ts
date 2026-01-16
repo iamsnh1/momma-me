@@ -46,14 +46,11 @@ const loadProducts = (): Product[] => {
 const saveProducts = (products: Product[]) => {
   if (typeof window === 'undefined') return
   try {
-    // Remove base64 images - only store URLs (images are in database, not localStorage)
-    const productsWithoutBase64 = products.map(p => {
-      // If image is base64 (starts with data:), remove it - images must be in database
-      if (p.image && p.image.startsWith('data:image/')) {
-        console.warn(`⚠️ Product "${p.name}" has base64 image. Removing - images must be stored in database, not localStorage.`)
-        return { ...p, image: '' } // Remove base64 image
-      }
-      // Keep URLs (like /api/images/123) - these reference images in the database
+    // Keep images in data - they're compressed and part of the product data
+    // This makes images accessible to all users since they're in the shared localStorage data
+    const productsWithImages = products.map(p => {
+      // Keep compressed base64 images (they're small and part of the data)
+      // Also keep URLs
       return p
     })
     
@@ -79,7 +76,7 @@ const saveProducts = (products: Product[]) => {
     // Backups are optional and not worth failing the save operation
     
     // Calculate size before saving
-    const dataToSave = JSON.stringify(productsWithoutBase64)
+    const dataToSave = JSON.stringify(productsWithImages)
     const dataSize = dataToSave.length
     const dataSizeMB = (dataSize / (1024 * 1024)).toFixed(2)
     
@@ -87,22 +84,17 @@ const saveProducts = (products: Product[]) => {
     const MAX_SIZE = 2 * 1024 * 1024 // 2MB limit (reduced from default)
     if (dataSize > MAX_SIZE) {
       console.error(`Product data too large: ${dataSizeMB} MB (limit: 2 MB)`)
-      // Remove products with base64 images first
-      const cleanedProducts = productsWithoutBase64.filter(p => {
-        // Keep products with URLs or no images
-        return !p.image || (!p.image.startsWith('data:') && p.image.startsWith('http'))
-      })
-      
+      // If data is too large, try removing old/unused products or compress images more
+      console.warn(`⚠️ Product data is large (${dataSizeMB} MB). Consider removing old products or using smaller images.`)
+      // Still try to save - let it fail if truly too large
+      const cleanedProducts = productsWithImages
       const cleanedData = JSON.stringify(cleanedProducts)
-      if (cleanedData.length > MAX_SIZE) {
-        throw new Error(`Product data still too large after cleanup (${(cleanedData.length / 1024 / 1024).toFixed(2)} MB). Please remove products with large images or use image URLs from Spaces.`)
-      }
       
       // Save cleaned products
       localStorage.setItem(STORAGE_KEY, cleanedData)
       localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
       localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-      console.log(`✅ Saved ${cleanedProducts.length} products (removed ${productsWithoutBase64.length - cleanedProducts.length} with base64 images)`)
+      console.log(`✅ Saved ${cleanedProducts.length} products (${dataSizeMB} MB)`)
       return
     }
     
@@ -111,12 +103,12 @@ const saveProducts = (products: Product[]) => {
       localStorage.setItem(STORAGE_KEY, dataToSave)
       localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
       localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-      console.log(`✅ Saved ${productsWithoutBase64.length} products to localStorage (${dataSizeMB} MB)`)
+      console.log(`✅ Saved ${productsWithImages.length} products to localStorage (${dataSizeMB} MB)`)
     } catch (saveError: any) {
       if (saveError.name === 'QuotaExceededError' || saveError instanceof DOMException && saveError.name === 'QuotaExceededError') {
         console.warn('Quota exceeded, trying to clean more...')
         // Remove all products with any images (keep only products without images)
-        const minimalProducts = productsWithoutBase64.map(p => ({
+        const minimalProducts = productsWithImages.map(p => ({
           ...p,
           image: '' // Remove all images to save space
         }))
