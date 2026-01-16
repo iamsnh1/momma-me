@@ -79,7 +79,7 @@ export default function AdminProductsManagement() {
     
     // Upload all files - FORCE Spaces upload, don't allow base64 fallback
     try {
-      console.log('Starting upload to ImgBB...')
+      console.log('Starting upload to database...')
       const uploadedImages = await Promise.all(
         fileArray.map(async (file, index) => {
           try {
