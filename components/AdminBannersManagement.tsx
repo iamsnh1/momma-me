@@ -333,30 +333,21 @@ export default function AdminBannersManagement() {
                         }
                         
                         try {
-                          // Try to upload to cloud hosting first (for universal access)
+                          // Upload to ImgBB (cloud hosting)
                           const imageUrl = await uploadImage(file)
+                          
+                          if (!isImageURL(imageUrl)) {
+                            throw new Error('Upload did not return a valid URL')
+                          }
+                          
                           setFormData({ ...formData, image: imageUrl })
                           setIsProcessingImage(false)
-                          
-                          if (isImageURL(imageUrl)) {
-                            alert('✅ Image uploaded to cloud! It will be visible to all users.')
-                          } else {
-                            alert('⚠️ Image saved locally (base64). It will only be visible on this device. For universal access, please use an image URL or configure cloud hosting.')
-                          }
+                          alert('✅ Image uploaded to ImgBB! It will be visible to all users.')
                         } catch (error: any) {
-                          alert(`Error uploading image: ${error.message}\n\nFalling back to local storage (base64). Note: This will only be visible on this device.`)
-                          // Fallback to base64
-                          const reader = new FileReader()
-                          reader.onloadend = () => {
-                            setFormData({ ...formData, image: reader.result as string })
-                            setIsProcessingImage(false)
-                          }
-                          reader.onerror = () => {
-                            alert('Error reading file. Please try again.')
-                            e.target.value = ''
-                            setIsProcessingImage(false)
-                          }
-                          reader.readAsDataURL(file)
+                          console.error('Upload error:', error)
+                          setIsProcessingImage(false)
+                          alert(`❌ Image upload failed: ${error.message}\n\nPlease:\n1. Get a free ImgBB API key at https://api.imgbb.com/\n2. Add NEXT_PUBLIC_IMGBB_API_KEY to environment variables\n3. Or use an image URL instead`)
+                          e.target.value = ''
                         }
                       }
                     }}
