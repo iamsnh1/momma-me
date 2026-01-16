@@ -872,7 +872,8 @@ export default function AdminProductsManagement() {
                       <button
                         onClick={() => {
                           if (confirm('Are you sure you want to delete this product?')) {
-                            deleteProduct(product.id)
+                            await deleteProduct(product.id)
+                            await initialize()
                             // Dispatch event to refresh frontend
                             if (typeof window !== 'undefined') {
                               window.dispatchEvent(new Event('productsUpdated'))
