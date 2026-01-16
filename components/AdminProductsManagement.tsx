@@ -5,7 +5,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiUpload, FiEye } from 'react-i
 import { Product } from '@/store/cartStore'
 import { useProductStore } from '@/store/productStore'
 import { useCategoryStore } from '@/store/categoryStore'
-import { uploadImage, isImageURL } from '@/utils/imgbbUpload'
+import { uploadImage, isImageURL } from '@/utils/localUpload'
 
 export default function AdminProductsManagement() {
   const { products, addProduct, updateProduct, deleteProduct, initialize } = useProductStore()
@@ -87,9 +87,9 @@ export default function AdminProductsManagement() {
             const imageUrl = await uploadImage(file)
             console.log(`✅ Upload successful: ${imageUrl}`)
             
-            // If it's not a URL, throw error
+            // If it's not a valid URL/path, throw error
             if (!isImageURL(imageUrl)) {
-              throw new Error('Image must be uploaded to ImgBB. Invalid URL returned.')
+              throw new Error('Image upload failed. Invalid URL returned.')
             }
             return imageUrl
           } catch (error: any) {
@@ -101,7 +101,7 @@ export default function AdminProductsManagement() {
       )
       
       console.log('All uploads completed:', uploadedImages)
-      alert(`✅ ${uploadedImages.length} image(s) uploaded to ImgBB!\n\nThese will be visible to all users.`)
+      alert(`✅ ${uploadedImages.length} image(s) uploaded!\n\nThese will be visible to all users.`)
       
       setFormData((prev: any) => ({
         ...prev,
@@ -110,7 +110,7 @@ export default function AdminProductsManagement() {
     } catch (error: any) {
       console.error('Error processing files:', error)
       const errorDetails = error.message || 'Unknown error'
-      alert(`❌ Upload Failed!\n\n${errorDetails}\n\nTroubleshooting:\n1. Get a free ImgBB API key at https://api.imgbb.com/\n2. Add NEXT_PUBLIC_IMGBB_API_KEY to environment variables\n3. Redeploy your app\n4. Or use image URLs instead of file uploads`)
+      alert(`❌ Upload Failed!\n\n${errorDetails}\n\nPlease try again or use an image URL instead.`)
     } finally {
       setIsUploading(false)
     }

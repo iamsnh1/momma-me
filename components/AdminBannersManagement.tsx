@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiEye, FiEyeOff, FiChevronUp, FiChevronDown } from 'react-icons/fi'
 import { useBannerStore, Banner } from '@/store/bannerStore'
-import { uploadImage, isImageURL } from '@/utils/imgbbUpload'
+import { uploadImage, isImageURL } from '@/utils/localUpload'
 
 export default function AdminBannersManagement() {
   const { banners, addBanner, updateBanner, deleteBanner, initialize } = useBannerStore()
@@ -342,11 +342,11 @@ export default function AdminBannersManagement() {
                           
                           setFormData({ ...formData, image: imageUrl })
                           setIsProcessingImage(false)
-                          alert('✅ Image uploaded to ImgBB! It will be visible to all users.')
+                          alert('✅ Image uploaded! It will be visible to all users.')
                         } catch (error: any) {
                           console.error('Upload error:', error)
                           setIsProcessingImage(false)
-                          alert(`❌ Image upload failed: ${error.message}\n\nPlease:\n1. Get a free ImgBB API key at https://api.imgbb.com/\n2. Add NEXT_PUBLIC_IMGBB_API_KEY to environment variables\n3. Or use an image URL instead`)
+                          alert(`❌ Image upload failed: ${error.message}\n\nPlease try again or use an image URL instead.`)
                           e.target.value = ''
                         }
                       }
