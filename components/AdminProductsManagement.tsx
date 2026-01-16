@@ -134,7 +134,7 @@ export default function AdminProductsManagement() {
     })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Parse sale price properly
     const salePriceStr = formData.salePrice?.toString().trim() || ''
     const salePriceNum = salePriceStr ? parseFloat(salePriceStr) : 0
@@ -160,36 +160,28 @@ export default function AdminProductsManagement() {
     
     try {
       if (editingId) {
-        updateProduct(editingId, productUpdate)
-        console.log('✅ Product updated:', editingId, productUpdate)
+        await updateProduct(editingId, productUpdate)
+        console.log('✅ Product updated in database:', editingId)
         setEditingId(null)
       } else if (isAdding) {
         const newProduct: Product = {
           id: Date.now().toString(),
           ...productUpdate
         } as Product
-        addProduct(newProduct)
-        console.log('✅ Product added:', newProduct.id, productUpdate)
+        await addProduct(newProduct)
+        console.log('✅ Product added to database:', newProduct.id)
         setIsAdding(false)
       }
       
-      // Re-initialize to refresh the store
-      initialize()
+      // Re-initialize to refresh the store from database
+      await initialize()
       
       // Dispatch event to refresh frontend
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('productsUpdated'))
       }
       
-      // Verify it was saved
-      const savedProducts = typeof window !== 'undefined' ? localStorage.getItem('momma-me-products') : null
-      console.log('Products saved to localStorage:', savedProducts ? 'Yes' : 'No')
-      if (savedProducts) {
-        const parsed = JSON.parse(savedProducts)
-        console.log(`Saved ${parsed.length} products`)
-      }
-      
-      alert('✅ Product saved successfully! Changes will appear on the site. Refresh the page to see updates.')
+      alert('✅ Product saved successfully to database! All users will see this product.')
       resetForm()
     } catch (error: any) {
       alert(`❌ Error saving product: ${error.message || 'Unknown error'}`)
