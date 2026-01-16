@@ -43,15 +43,24 @@ async function ensureDbDir() {
 
 export async function loadDatabase(): Promise<Database> {
   try {
-    await ensureDbDir()
+    // Try to ensure directory exists (may fail in read-only environments)
+    try {
+      await ensureDbDir()
+    } catch (e) {
+      // Directory may already exist or be read-only - that's okay
+    }
+    
     if (existsSync(DB_FILE)) {
       const data = await readFile(DB_FILE, 'utf-8')
-      return JSON.parse(data)
+      if (data && data.trim()) {
+        return JSON.parse(data)
+      }
     }
   } catch (e) {
     console.error('Error loading database:', e)
     // Return empty database if file doesn't exist or can't be read
   }
+  // Return empty database as fallback
   return { products: [], images: [], banners: [], categories: [] }
 }
 
