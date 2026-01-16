@@ -46,13 +46,14 @@ const loadProducts = (): Product[] => {
 const saveProducts = (products: Product[]) => {
   if (typeof window === 'undefined') return
   try {
-    // Remove base64 images to save space (they should be URLs from Spaces)
+    // Remove base64 images - only store URLs (images are in database, not localStorage)
     const productsWithoutBase64 = products.map(p => {
-      // If image is base64 (starts with data:), remove it or keep URL
+      // If image is base64 (starts with data:), remove it - images must be in database
       if (p.image && p.image.startsWith('data:image/')) {
-        console.warn(`⚠️ Product "${p.name}" has base64 image. Removing to save space. Please upload to Spaces.`)
+        console.warn(`⚠️ Product "${p.name}" has base64 image. Removing - images must be stored in database, not localStorage.`)
         return { ...p, image: '' } // Remove base64 image
       }
+      // Keep URLs (like /api/images/123) - these reference images in the database
       return p
     })
     
