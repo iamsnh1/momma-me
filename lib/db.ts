@@ -1,7 +1,13 @@
 /**
  * Database connection and utilities
+ * SERVER-SIDE ONLY - Do not import in client components!
  * Uses PostgreSQL via DigitalOcean Managed Database
  */
+
+// Ensure this is only used server-side
+if (typeof window !== 'undefined') {
+  throw new Error('lib/db.ts can only be used server-side (in API routes)')
+}
 
 // Database connection string from environment variable
 const DATABASE_URL = process.env.DATABASE_URL || ''
@@ -24,6 +30,7 @@ let db: Database = {
 
 // For now, we'll use a JSON file as the database
 // This will be replaced with PostgreSQL connection
+// These imports are server-side only
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'

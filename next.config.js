@@ -20,6 +20,16 @@ const nextConfig = {
       ...(config.resolve.modules || []),
       projectRoot,
     ]
+    
+    // Ensure lib/db.ts is only bundled server-side
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      }
+    }
+    
     return config
   },
   // Headers for production deployment
