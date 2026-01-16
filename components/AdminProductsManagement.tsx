@@ -870,7 +870,7 @@ export default function AdminProductsManagement() {
                         <FiEdit2 className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (confirm('Are you sure you want to delete this product?')) {
                             await deleteProduct(product.id)
                             await initialize()
