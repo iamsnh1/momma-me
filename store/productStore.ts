@@ -2,197 +2,134 @@ import { create } from 'zustand'
 import { Product } from './cartStore'
 import { products as initialProducts } from '@/data/products'
 
-const STORAGE_KEY = 'momma-me-products'
-
-// Track if we've ever saved data to localStorage
-const hasSavedData = (): boolean => {
-  if (typeof window === 'undefined') return false
-  return localStorage.getItem(`${STORAGE_KEY}_initialized`) === 'true'
-}
-
-// Load products from localStorage or use initial products
-const loadProducts = (): Product[] => {
-  if (typeof window === 'undefined') {
-    return initialProducts
-  }
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // If we have saved data, always use it (don't fall back to initial)
-        return parsed
-      }
-    }
-    // Only return initial products if we've NEVER saved data before
-    // This prevents overwriting admin changes
-    if (!hasSavedData()) {
-      return initialProducts
-    }
-    // If we had saved data but it's now empty/corrupted, return empty array
-    // This preserves the fact that admin has made changes
-    return []
-  } catch (e) {
-    console.error('Error loading products from localStorage:', e)
-    // If we've saved data before, don't overwrite with initial
-    if (hasSavedData()) {
-      return []
-    }
-    return initialProducts
-  }
-}
-
-// Save products to localStorage with backup and base64 image removal
-const saveProducts = (products: Product[]) => {
-  if (typeof window === 'undefined') return
-  try {
-    // Keep images in data - they're compressed and part of the product data
-    // This makes images accessible to all users since they're in the shared localStorage data
-    const productsWithImages = products.map(p => {
-      // Keep compressed base64 images (they're small and part of the data)
-      // Also keep URLs
-      return p
-    })
-    
-    // Clean up ALL old backups FIRST to free maximum space
-    try {
-      const backupKeys = Object.keys(localStorage)
-        .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
-      // Remove ALL backups to free space
-      backupKeys.forEach(key => {
-        try {
-          localStorage.removeItem(key)
-          console.log('Removed old backup:', key)
-        } catch (e) {
-          console.warn('Failed to remove backup:', key)
-        }
-      })
-      console.log(`Cleaned up ${backupKeys.length} old backups`)
-    } catch (e) {
-      console.warn('Failed to clean up backups:', e)
-    }
-    
-    // DON'T create backups if we're near quota limit - it causes errors
-    // Backups are optional and not worth failing the save operation
-    
-    // Calculate size before saving
-    const dataToSave = JSON.stringify(productsWithImages)
-    const dataSize = dataToSave.length
-    const dataSizeMB = (dataSize / (1024 * 1024)).toFixed(2)
-    
-    // Check if data is too large
-    const MAX_SIZE = 2 * 1024 * 1024 // 2MB limit (reduced from default)
-    if (dataSize > MAX_SIZE) {
-      console.error(`Product data too large: ${dataSizeMB} MB (limit: 2 MB)`)
-      // If data is too large, try removing old/unused products or compress images more
-      console.warn(`⚠️ Product data is large (${dataSizeMB} MB). Consider removing old products or using smaller images.`)
-      // Still try to save - let it fail if truly too large
-      const cleanedProducts = productsWithImages
-      const cleanedData = JSON.stringify(cleanedProducts)
-      
-      // Save cleaned products
-      localStorage.setItem(STORAGE_KEY, cleanedData)
-      localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-      localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-      console.log(`✅ Saved ${cleanedProducts.length} products (${dataSizeMB} MB)`)
-      return
-    }
-    
-    // Try to save - if it fails due to quota, try cleaning more
-    try {
-      localStorage.setItem(STORAGE_KEY, dataToSave)
-      localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-      localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-      console.log(`✅ Saved ${productsWithImages.length} products to localStorage (${dataSizeMB} MB)`)
-    } catch (saveError: any) {
-      if (saveError.name === 'QuotaExceededError' || saveError instanceof DOMException && saveError.name === 'QuotaExceededError') {
-        console.warn('Quota exceeded, trying to clean more...')
-        // Remove all products with any images (keep only products without images)
-        const minimalProducts = productsWithImages.map(p => ({
-          ...p,
-          image: '' // Remove all images to save space
-        }))
-        const minimalData = JSON.stringify(minimalProducts)
-        try {
-          localStorage.setItem(STORAGE_KEY, minimalData)
-          localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-          localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-          console.log(`✅ Saved ${minimalProducts.length} products without images (quota was full)`)
-          const errorMsg = '⚠️ Storage quota was full!\n\n' +
-            'Images were removed to save space.\n\n' +
-            'To fix this:\n' +
-            '1. Add DigitalOcean Spaces environment variables\n' +
-            '2. Use image URLs from Spaces (not base64)\n' +
-            '3. Clear browser cache: localStorage.clear()'
-          alert(errorMsg)
-          throw new Error('Storage quota exceeded. Images were removed. Please use image URLs from Spaces.')
-        } catch (minimalError: any) {
-          // Even minimal save failed - localStorage is completely full
-          const errorMsg = '❌ Storage quota completely full!\n\n' +
-            'Please:\n' +
-            '1. Open browser console (F12)\n' +
-            '2. Run: localStorage.clear()\n' +
-            '3. Refresh the page\n' +
-            '4. Add DigitalOcean Spaces environment variables\n' +
-            '5. Use image URLs instead of uploading files'
-          alert(errorMsg)
-          throw new Error('Storage quota completely full. Please clear localStorage and use Spaces for images.')
-        }
-      }
-      throw saveError
-    }
-  } catch (e: any) {
-    console.error('Error saving products to localStorage:', e)
-    // Re-throw with helpful message
-    if (e.message && !e.message.includes('quota')) {
-      throw new Error(`Failed to save products: ${e.message}`)
-    }
-    throw e
-  }
-}
-
 interface ProductStore {
   products: Product[]
-  initialize: () => void
-  addProduct: (product: Product) => void
-  updateProduct: (id: string, product: Partial<Product>) => void
-  deleteProduct: (id: string) => void
+  isLoading: boolean
+  error: string | null
+  initialize: () => Promise<void>
+  addProduct: (product: Product) => Promise<void>
+  updateProduct: (id: string, product: Partial<Product>) => Promise<void>
+  deleteProduct: (id: string) => Promise<void>
   getProduct: (id: string) => Product | undefined
   getProductsByCategory: (category: string) => Product[]
   getAllProducts: () => Product[]
 }
 
+// Fetch products from API
+async function fetchProducts(): Promise<Product[]> {
+  try {
+    const response = await fetch('/api/products')
+    const data = await response.json()
+    if (data.success && data.products) {
+      return data.products
+    }
+    // Fallback to initial products if API fails
+    return initialProducts
+  } catch (error) {
+    console.error('Error fetching products from API:', error)
+    // Fallback to initial products
+    return initialProducts
+  }
+}
+
+// Save product via API
+async function saveProductToAPI(product: Product): Promise<Product> {
+  const response = await fetch('/api/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(product),
+  })
+  const data = await response.json()
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to save product')
+  }
+  return data.product
+}
+
+// Update product via API
+async function updateProductInAPI(id: string, updates: Partial<Product>): Promise<Product> {
+  const response = await fetch(`/api/products/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  const data = await response.json()
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to update product')
+  }
+  return data.product
+}
+
+// Delete product via API
+async function deleteProductFromAPI(id: string): Promise<void> {
+  const response = await fetch(`/api/products/${id}`, {
+    method: 'DELETE',
+  })
+  const data = await response.json()
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to delete product')
+  }
+}
+
 export const useProductStore = create<ProductStore>((set, get) => ({
-  products: loadProducts(),
+  products: [],
+  isLoading: false,
+  error: null,
   
-  initialize: () => {
-    // Always reload from localStorage to get latest changes
-    // This ensures admin changes are reflected immediately
-    const loaded = loadProducts()
-    if (loaded.length > 0 || get().products.length === 0) {
-      set({ products: loaded })
-      console.log(`🔄 Product store initialized with ${loaded.length} products`)
+  initialize: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const products = await fetchProducts()
+      set({ products, isLoading: false })
+      console.log(`🔄 Product store initialized with ${products.length} products from database`)
+    } catch (error: any) {
+      console.error('Error initializing products:', error)
+      set({ error: error.message, isLoading: false })
     }
   },
   
-  addProduct: (product) => {
-    const newProducts = [...get().products, product]
-    set({ products: newProducts })
-    saveProducts(newProducts)
+  addProduct: async (product) => {
+    try {
+      set({ isLoading: true, error: null })
+      const newProduct = await saveProductToAPI(product)
+      const newProducts = [...get().products, newProduct]
+      set({ products: newProducts, isLoading: false })
+      console.log('✅ Product added to database:', newProduct.name)
+    } catch (error: any) {
+      console.error('Error adding product:', error)
+      set({ error: error.message, isLoading: false })
+      throw error
+    }
   },
   
-  updateProduct: (id, updatedProduct) => {
-    const newProducts = get().products.map(p => 
-      p.id === id ? { ...p, ...updatedProduct } : p
-    )
-    set({ products: newProducts })
-    saveProducts(newProducts)
+  updateProduct: async (id, updatedProduct) => {
+    try {
+      set({ isLoading: true, error: null })
+      const updated = await updateProductInAPI(id, updatedProduct)
+      const newProducts = get().products.map(p => 
+        p.id === id ? updated : p
+      )
+      set({ products: newProducts, isLoading: false })
+      console.log('✅ Product updated in database:', id)
+    } catch (error: any) {
+      console.error('Error updating product:', error)
+      set({ error: error.message, isLoading: false })
+      throw error
+    }
   },
   
-  deleteProduct: (id) => {
-    const newProducts = get().products.filter(p => p.id !== id)
-    set({ products: newProducts })
-    saveProducts(newProducts)
+  deleteProduct: async (id) => {
+    try {
+      set({ isLoading: true, error: null })
+      await deleteProductFromAPI(id)
+      const newProducts = get().products.filter(p => p.id !== id)
+      set({ products: newProducts, isLoading: false })
+      console.log('✅ Product deleted from database:', id)
+    } catch (error: any) {
+      console.error('Error deleting product:', error)
+      set({ error: error.message, isLoading: false })
+      throw error
+    }
   },
   
   getProduct: (id) => {
@@ -207,4 +144,3 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     return get().products
   }
 }))
-

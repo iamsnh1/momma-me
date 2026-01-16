@@ -1,37 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
-
-// Database file
-const DB_DIR = join(process.cwd(), 'data')
-const IMAGES_DB_FILE = join(DB_DIR, 'images.json')
-
-interface StoredImage {
-  id: string
-  filename: string
-  data: string // base64 data
-  mimeType: string
-  size: number
-  uploadedAt: string
-}
-
-interface ImagesDatabase {
-  images: StoredImage[]
-}
-
-// Load images database
-async function loadImagesDb(): Promise<ImagesDatabase> {
-  try {
-    if (existsSync(IMAGES_DB_FILE)) {
-      const data = await readFile(IMAGES_DB_FILE, 'utf-8')
-      return JSON.parse(data)
-    }
-  } catch (e) {
-    console.error('Error loading images DB:', e)
-  }
-  return { images: [] }
-}
+import { getImage } from '@/lib/db'
 
 // GET: Retrieve image from database
 export async function GET(
@@ -41,11 +9,8 @@ export async function GET(
   try {
     const { id } = params
 
-    // Load database
-    const db = await loadImagesDb()
-    
-    // Find image
-    const image = db.images.find(img => img.id === id)
+    // Get image from database
+    const image = await getImage(id)
     
     if (!image) {
       return NextResponse.json(
@@ -78,4 +43,3 @@ export async function GET(
     )
   }
 }
-

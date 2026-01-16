@@ -1,11 +1,10 @@
 /**
  * Database Image Upload Utility
- * Stores images in a database (JSON file) - accessible to all users
- * No external services required!
+ * Uploads images to database via API - accessible to all users
  */
 
 /**
- * Upload image to database
+ * Upload image to database via API
  * @param file - Image file to upload
  * @returns Promise with image URL
  */
@@ -77,4 +76,3 @@ export function isImageURL(str: string): boolean {
     return str.startsWith('/api/images/') || str.startsWith('/') || str.startsWith('./')
   }
 }
-
