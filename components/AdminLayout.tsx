@@ -17,6 +17,7 @@ import {
   FiAward,
   FiUser,
   FiChevronDown
+  FiFileText
 } from 'react-icons/fi'
 import { useOrderStore } from '@/store/orderStore'
 
@@ -81,6 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { id: 'products', label: 'Products', icon: FiPackage, path: '/admin/products' },
     { id: 'categories', label: 'Categories', icon: FiFolder, path: '/admin/categories' },
     { id: 'banners', label: 'Banners & Ads', icon: FiImage, path: '/admin/banners' },
+    { id: 'pages', label: 'Pages', icon: FiFileText, path: '/admin/pages' },
     { id: 'trust-badges', label: 'Trust Badges', icon: FiAward, path: '/admin/trust-badges' },
     { id: 'footer', label: 'Footer Settings', icon: FiSettings, path: '/admin/footer' },
     { id: 'orders', label: 'Orders', icon: FiShoppingBag, path: '/admin/orders' },
