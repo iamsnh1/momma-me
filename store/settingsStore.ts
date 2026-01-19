@@ -53,9 +53,8 @@ export interface AppSettings {
   enableReviews: boolean
   enableWishlist: boolean
   enableNewsletter: boolean
+  updatedAt?: string
 }
-
-const STORAGE_KEY = 'momma-me-app-settings'
 
 const defaultSettings: AppSettings = {
   // General
@@ -112,61 +111,82 @@ const defaultSettings: AppSettings = {
   enableNewsletter: true
 }
 
-const loadSettings = (): AppSettings => {
-  if (typeof window === 'undefined') return defaultSettings
+// Fetch settings from API
+async function fetchSettings(): Promise<AppSettings | null> {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      return { ...defaultSettings, ...parsed }
+    const response = await fetch('/api/settings')
+    const data = await response.json()
+    if (data.success && data.settings) {
+      return data.settings
     }
-  } catch (e) {
-    console.error('Error loading settings from localStorage:', e)
-  }
-  return defaultSettings
-}
-
-const saveSettings = (settings: AppSettings) => {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-  } catch (e) {
-    console.error('Error saving settings to localStorage:', e)
+    return null
+  } catch (error) {
+    console.error('Error fetching settings from API:', error)
+    return null
   }
 }
 
 interface SettingsStore {
   settings: AppSettings
-  initialize: () => void
-  updateSettings: (settings: Partial<AppSettings>) => void
+  isLoading: boolean
+  error: string | null
+  initialize: () => Promise<void>
+  updateSettings: (settings: Partial<AppSettings>) => Promise<void>
   resetSettings: () => void
   getSetting: <K extends keyof AppSettings>(key: K) => AppSettings[K]
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
-  settings: loadSettings(),
+  settings: defaultSettings,
+  isLoading: false,
+  error: null,
 
-  initialize: () => {
-    const loaded = loadSettings()
-    set({ settings: loaded })
+  initialize: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const settings = await fetchSettings()
+      if (settings) {
+        set({ settings, isLoading: false })
+      } else {
+        set({ settings: defaultSettings, isLoading: false })
+      }
+    } catch (error: any) {
+      console.error('Error initializing settings:', error)
+      set({ error: error.message, isLoading: false, settings: defaultSettings })
+    }
   },
 
-  updateSettings: (newSettings) => {
-    const updated = { ...get().settings, ...newSettings }
-    set({ settings: updated })
-    saveSettings(updated)
+  updateSettings: async (updates) => {
+    try {
+      const currentSettings = get().settings
+      const newSettings = { ...currentSettings, ...updates }
+      
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings)
+      })
+      const data = await response.json()
+      if (data.success && data.settings) {
+        set({ settings: data.settings })
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('settingsUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to update settings')
+      }
+    } catch (error: any) {
+      console.error('Error updating settings:', error)
+      throw error
+    }
   },
 
   resetSettings: () => {
     set({ settings: defaultSettings })
-    saveSettings(defaultSettings)
   },
 
   getSetting: (key) => {
     return get().settings[key]
   },
 }))
-
-
-
-

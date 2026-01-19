@@ -53,27 +53,37 @@ export default function AdminTrustBadgesManagement() {
     })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.text) {
       alert('Please fill in the badge text')
       return
     }
 
-    if (editingId) {
-      updateBadge(editingId, formData)
-    } else {
-      addBadge(formData as Omit<TrustBadge, 'id' | 'createdAt' | 'updatedAt'>)
-    }
+    try {
+      if (editingId) {
+        await updateBadge(editingId, formData)
+      } else {
+        await addBadge(formData as Omit<TrustBadge, 'id' | 'createdAt' | 'updatedAt'>)
+      }
 
-    setEditingId(null)
-    setIsAdding(false)
-    setFormData({
-      text: '',
-      icon: '',
-      borderColor: 'blush-pink',
-      position: badges.length + 1,
-      isActive: true,
-    })
+      // Re-initialize to get the latest from database
+      await initialize()
+
+      setEditingId(null)
+      setIsAdding(false)
+      setFormData({
+        text: '',
+        icon: '',
+        borderColor: 'blush-pink',
+        position: badges.length + 1,
+        isActive: true,
+      })
+      
+      alert('✅ Trust badge saved successfully to database! All users will see this badge.')
+    } catch (error: any) {
+      alert(`❌ Error saving trust badge: ${error.message || 'Unknown error'}`)
+      console.error('Error saving trust badge:', error)
+    }
   }
 
   const handleCancel = () => {
@@ -88,34 +98,54 @@ export default function AdminTrustBadgesManagement() {
     })
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this trust badge?')) {
-      deleteBadge(id)
+      try {
+        await deleteBadge(id)
+        await initialize()
+        alert('✅ Trust badge deleted successfully!')
+      } catch (error: any) {
+        alert(`❌ Error deleting trust badge: ${error.message || 'Unknown error'}`)
+        console.error('Error deleting trust badge:', error)
+      }
     }
   }
 
-  const toggleActive = (id: string) => {
+  const toggleActive = async (id: string) => {
     const badge = badges.find(b => b.id === id)
     if (badge) {
-      updateBadge(id, { isActive: !badge.isActive })
+      try {
+        await updateBadge(id, { isActive: !badge.isActive })
+        await initialize()
+      } catch (error: any) {
+        alert(`❌ Error updating trust badge: ${error.message || 'Unknown error'}`)
+        console.error('Error updating trust badge:', error)
+      }
     }
   }
 
-  const movePosition = (id: string, direction: 'up' | 'down') => {
+  const movePosition = async (id: string, direction: 'up' | 'down') => {
     const badge = badges.find(b => b.id === id)
     if (!badge) return
 
     const sortedBadges = [...badges].sort((a, b) => a.position - b.position)
     const currentIndex = sortedBadges.findIndex(b => b.id === id)
     
-    if (direction === 'up' && currentIndex > 0) {
-      const prevBadge = sortedBadges[currentIndex - 1]
-      updateBadge(id, { position: prevBadge.position })
-      updateBadge(prevBadge.id, { position: badge.position })
-    } else if (direction === 'down' && currentIndex < sortedBadges.length - 1) {
-      const nextBadge = sortedBadges[currentIndex + 1]
-      updateBadge(id, { position: nextBadge.position })
-      updateBadge(nextBadge.id, { position: badge.position })
+    try {
+      if (direction === 'up' && currentIndex > 0) {
+        const prevBadge = sortedBadges[currentIndex - 1]
+        await updateBadge(id, { position: prevBadge.position })
+        await updateBadge(prevBadge.id, { position: badge.position })
+      } else if (direction === 'down' && currentIndex < sortedBadges.length - 1) {
+        const nextBadge = sortedBadges[currentIndex + 1]
+        await updateBadge(id, { position: nextBadge.position })
+        await updateBadge(nextBadge.id, { position: badge.position })
+      }
+      
+      await initialize()
+    } catch (error: any) {
+      alert(`❌ Error updating trust badge position: ${error.message || 'Unknown error'}`)
+      console.error('Error updating trust badge position:', error)
     }
   }
 

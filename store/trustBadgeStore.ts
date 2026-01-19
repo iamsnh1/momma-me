@@ -11,109 +11,119 @@ export interface TrustBadge {
   updatedAt: string
 }
 
-const STORAGE_KEY = 'momma-me-trust-badges'
-
-// Initial trust badges
-const initialBadges: TrustBadge[] = [
-  {
-    id: 'badge-1',
-    text: '100% Pure Cotton',
-    borderColor: 'blush-pink',
-    position: 1,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'badge-2',
-    text: 'Made for Comfort',
-    borderColor: 'powder-blue',
-    position: 2,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'badge-3',
-    text: 'Mother-Founded',
-    borderColor: 'mint-green',
-    position: 3,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-// Load badges from localStorage
-const loadBadges = (): TrustBadge[] => {
-  if (typeof window === 'undefined') return initialBadges
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch (e) {
-    console.error('Error loading trust badges from localStorage:', e)
-  }
-  return initialBadges
-}
-
-// Save badges to localStorage
-const saveBadges = (badges: TrustBadge[]) => {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(badges))
-  } catch (e) {
-    console.error('Error saving trust badges to localStorage:', e)
-  }
-}
-
 interface TrustBadgeStore {
   badges: TrustBadge[]
-  initialize: () => void
-  addBadge: (badge: Omit<TrustBadge, 'id' | 'createdAt' | 'updatedAt'>) => void
-  updateBadge: (id: string, badge: Partial<TrustBadge>) => void
-  deleteBadge: (id: string) => void
+  isLoading: boolean
+  error: string | null
+  initialize: () => Promise<void>
+  addBadge: (badge: Omit<TrustBadge, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  updateBadge: (id: string, badge: Partial<TrustBadge>) => Promise<void>
+  deleteBadge: (id: string) => Promise<void>
   getBadge: (id: string) => TrustBadge | undefined
   getActiveBadges: () => TrustBadge[]
   getAllBadges: () => TrustBadge[]
 }
 
-export const useTrustBadgeStore = create<TrustBadgeStore>((set, get) => ({
-  badges: loadBadges(),
-
-  initialize: () => {
-    const loaded = loadBadges()
-    set({ badges: loaded })
-  },
-
-  addBadge: (badgeData) => {
-    const newBadge: TrustBadge = {
-      ...badgeData,
-      id: `badge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+// Fetch trust badges from API
+async function fetchTrustBadges(): Promise<TrustBadge[]> {
+  try {
+    const response = await fetch('/api/trust-badges')
+    const data = await response.json()
+    if (data.success && data.badges) {
+      return data.badges
     }
-    const newBadges = [...get().badges, newBadge]
-    set({ badges: newBadges })
-    saveBadges(newBadges)
+    return []
+  } catch (error) {
+    console.error('Error fetching trust badges from API:', error)
+    return []
+  }
+}
+
+export const useTrustBadgeStore = create<TrustBadgeStore>((set, get) => ({
+  badges: [],
+  isLoading: false,
+  error: null,
+
+  initialize: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const badges = await fetchTrustBadges()
+      set({ badges, isLoading: false })
+    } catch (error: any) {
+      console.error('Error initializing trust badges:', error)
+      set({ error: error.message, isLoading: false })
+    }
   },
 
-  updateBadge: (id, updatedBadge) => {
-    const newBadges = get().badges.map(b =>
-      b.id === id ? { ...b, ...updatedBadge, updatedAt: new Date().toISOString() } : b
-    )
-    set({ badges: newBadges })
-    saveBadges(newBadges)
+  addBadge: async (badgeData) => {
+    try {
+      const response = await fetch('/api/trust-badges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(badgeData)
+      })
+      const data = await response.json()
+      if (data.success && data.badge) {
+        set((state) => ({ badges: [...state.badges, data.badge] }))
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('trustBadgesUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to create trust badge')
+      }
+    } catch (error: any) {
+      console.error('Error adding trust badge:', error)
+      throw error
+    }
   },
 
-  deleteBadge: (id) => {
-    const newBadges = get().badges.filter(b => b.id !== id)
-    set({ badges: newBadges })
-    saveBadges(newBadges)
+  updateBadge: async (id, updates) => {
+    try {
+      const response = await fetch(`/api/trust-badges/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+      const data = await response.json()
+      if (data.success && data.badge) {
+        set((state) => ({
+          badges: state.badges.map(b => b.id === id ? data.badge : b)
+        }))
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('trustBadgesUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to update trust badge')
+      }
+    } catch (error: any) {
+      console.error('Error updating trust badge:', error)
+      throw error
+    }
+  },
+
+  deleteBadge: async (id) => {
+    try {
+      const response = await fetch(`/api/trust-badges/${id}`, {
+        method: 'DELETE'
+      })
+      const data = await response.json()
+      if (data.success) {
+        set((state) => ({
+          badges: state.badges.filter(b => b.id !== id)
+        }))
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('trustBadgesUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to delete trust badge')
+      }
+    } catch (error: any) {
+      console.error('Error deleting trust badge:', error)
+      throw error
+    }
   },
 
   getBadge: (id) => {
@@ -128,4 +138,3 @@ export const useTrustBadgeStore = create<TrustBadgeStore>((set, get) => ({
     return get().badges
   },
 }))
-
