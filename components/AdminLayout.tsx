@@ -16,7 +16,7 @@ import {
   FiImage,
   FiAward,
   FiUser,
-  FiChevronDown
+  FiChevronDown,
   FiFileText
 } from 'react-icons/fi'
 import { useOrderStore } from '@/store/orderStore'
