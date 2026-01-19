@@ -34,6 +34,7 @@ export default function AdminProductsManagement() {
     sku: '',
     price: 0,
     salePrice: '',
+    taxPercentage: '',
     images: [],
     category: categories.length > 0 ? categories[0].name : '',
     ageRange: [],
@@ -146,12 +147,17 @@ export default function AdminProductsManagement() {
     // The display price (what customer sees) should be salePrice if available, otherwise original price
     const displayPrice = hasSalePrice ? salePriceNum : originalPriceNum
     
+    // Parse tax percentage
+    const taxPercentageStr = formData.taxPercentage?.toString().trim() || ''
+    const taxPercentageNum = taxPercentageStr ? parseFloat(taxPercentageStr) : undefined
+    
     // Build the product update object
     const productUpdate: Partial<Product> = {
       name: formData.name,
       price: displayPrice, // This is what customers pay
       originalPrice: originalPriceNum, // Always save the original price
       salePrice: hasSalePrice ? salePriceNum : undefined, // Only set if valid sale
+      taxPercentage: taxPercentageNum && taxPercentageNum > 0 ? taxPercentageNum : undefined,
       image: formData.images[0] || '',
       category: formData.category,
       rating: 5,
@@ -195,6 +201,7 @@ export default function AdminProductsManagement() {
       sku: '',
       price: 0,
       salePrice: '',
+      taxPercentage: '',
       images: [],
       category: categories.length > 0 ? categories[0].name : '',
       ageRange: [],
@@ -559,6 +566,23 @@ export default function AdminProductsManagement() {
                     })()}
                   </div>
                   <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Tax Percentage (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.taxPercentage}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setFormData({ ...formData, taxPercentage: value })
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple"
+                      placeholder="e.g., 18 for 18%"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Tax percentage to be applied to the product price</p>
+                  </div>
+                  <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Stock Quantity *</label>
                     <input
                       type="number"
@@ -855,11 +879,13 @@ export default function AdminProductsManagement() {
                           const salePrice = product.salePrice && product.salePrice < originalPrice 
                             ? product.salePrice.toString() 
                             : ''
+                          const taxPercentage = product.taxPercentage ? product.taxPercentage.toString() : ''
                           setFormData({ 
                             ...formData, 
                             name: product.name, 
                             price: originalPrice,
                             salePrice: salePrice,
+                            taxPercentage: taxPercentage,
                             category: product.category,
                             shortDescription: product.description || '',
                             images: product.image ? [product.image] : []

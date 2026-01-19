@@ -6,6 +6,7 @@ export interface Product {
   price: number
   originalPrice?: number
   salePrice?: number
+  taxPercentage?: number
   image: string
   category: string
   rating: number
