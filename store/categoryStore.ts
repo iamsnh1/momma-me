@@ -131,7 +131,7 @@ export const useCategoryStore = create<CategoryStore>((set, get) => ({
   },
 
   getActiveCategories: () => {
-    return get().categories.filter(c => c.active).sort((a, b) => a.position - b.position)
+    return get().categories.filter(c => c.active).sort((a, b) => (a.position || 0) - (b.position || 0))
   },
 
   getCategory: (id) => {
