@@ -16,6 +16,27 @@ export default function Footer() {
     initializeCategories()
     initializeFooter()
   }, [initializeCategories, initializeFooter])
+
+  // Listen for footer settings updates
+  useEffect(() => {
+    if (!mounted) return
+    
+    const handleFooterUpdate = () => {
+      console.log('🔄 Footer settings update event received, refreshing...')
+      initializeFooter()
+    }
+    
+    window.addEventListener('footerSettingsUpdated', handleFooterUpdate)
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'footerSettingsUpdated') {
+        handleFooterUpdate()
+      }
+    })
+    
+    return () => {
+      window.removeEventListener('footerSettingsUpdated', handleFooterUpdate)
+    }
+  }, [mounted, initializeFooter])
   
   const categories = mounted ? getActiveCategories() : []
   

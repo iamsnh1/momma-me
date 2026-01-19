@@ -74,7 +74,7 @@ export async function loadDatabase(): Promise<Database> {
     // Return empty database if file doesn't exist or can't be read
   }
   // Return empty database as fallback
-  return { 
+  const defaultDb = { 
     products: [], 
     images: [], 
     banners: [], 
@@ -83,6 +83,18 @@ export async function loadDatabase(): Promise<Database> {
     settings: null,
     trustBadges: []
   }
+  
+  // If database file doesn't exist, ensure it has the right structure
+  if (!existsSync(DB_FILE)) {
+    try {
+      await ensureDbDir()
+      await writeFile(DB_FILE, JSON.stringify(defaultDb, null, 2), 'utf-8')
+    } catch (e) {
+      // Ignore errors during initialization
+    }
+  }
+  
+  return defaultDb
 }
 
 export async function saveDatabase(data: Database): Promise<void> {
