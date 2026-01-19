@@ -428,17 +428,27 @@ export async function getPages() {
 
 export async function getPage(id: string) {
   const db = await loadDatabase()
+  if (!db.pages || !Array.isArray(db.pages)) {
+    return undefined
+  }
   return db.pages.find(p => p.id === id)
 }
 
 export async function getPageByPath(path: string) {
   const db = await loadDatabase()
+  if (!db.pages || !Array.isArray(db.pages)) {
+    return undefined
+  }
   return db.pages.find(p => p.path === path)
 }
 
 export async function createPage(page: any) {
   try {
     const db = await loadDatabase()
+    // Ensure pages array exists
+    if (!db.pages || !Array.isArray(db.pages)) {
+      db.pages = []
+    }
     const newPage = {
       ...page,
       id: page.id || `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
@@ -463,6 +473,10 @@ export async function createPage(page: any) {
 export async function updatePage(id: string, updates: any) {
   try {
     const db = await loadDatabase()
+    // Ensure pages array exists
+    if (!db.pages || !Array.isArray(db.pages)) {
+      db.pages = []
+    }
     const index = db.pages.findIndex(p => p.id === id)
     if (index === -1) throw new Error('Page not found')
     db.pages[index] = {
@@ -481,6 +495,11 @@ export async function updatePage(id: string, updates: any) {
 export async function deletePage(id: string) {
   try {
     const db = await loadDatabase()
+    // Ensure pages array exists
+    if (!db.pages || !Array.isArray(db.pages)) {
+      db.pages = []
+      return // Nothing to delete
+    }
     db.pages = db.pages.filter(p => p.id !== id)
     await saveDatabase(db)
   } catch (error: any) {
