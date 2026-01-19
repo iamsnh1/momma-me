@@ -17,10 +17,18 @@ export default function AdminFooterManagement() {
     setFormData(settings)
   }, [settings])
 
-  const handleSave = () => {
-    updateSettings(formData)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+  const handleSave = async () => {
+    try {
+      await updateSettings(formData)
+      // Re-initialize to get the latest from database
+      await initialize()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+      alert('✅ Footer settings saved successfully to database! All users will see these changes.')
+    } catch (error: any) {
+      alert(`❌ Error saving footer settings: ${error.message || 'Unknown error'}`)
+      console.error('Error saving footer settings:', error)
+    }
   }
 
   const handleReset = () => {
@@ -271,4 +279,3 @@ export default function AdminFooterManagement() {
     </div>
   )
 }
-
