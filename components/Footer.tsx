@@ -58,19 +58,25 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-gray-300 text-sm leading-relaxed">
-              {settings.companyDescription}
+              {settings?.companyDescription || 'Your trusted partner for premium baby and mom products.'}
             </p>
             <div className="flex space-x-4">
-              <a href={settings.socialMedia.facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-700 hover:bg-primary-pink-dark flex items-center justify-center transition-colors">
-                <FiFacebook className="w-5 h-5" />
-              </a>
-              <a href={settings.socialMedia.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-700 hover:bg-primary-pink-dark flex items-center justify-center transition-colors">
-                <FiInstagram className="w-5 h-5" />
-              </a>
-              <a href={settings.socialMedia.twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-700 hover:bg-primary-pink-dark flex items-center justify-center transition-colors">
-                <FiTwitter className="w-5 h-5" />
-              </a>
-              {settings.socialMedia.pinterest && (
+              {settings?.socialMedia?.facebook && (
+                <a href={settings.socialMedia.facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-700 hover:bg-primary-pink-dark flex items-center justify-center transition-colors">
+                  <FiFacebook className="w-5 h-5" />
+                </a>
+              )}
+              {settings?.socialMedia?.instagram && (
+                <a href={settings.socialMedia.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-700 hover:bg-primary-pink-dark flex items-center justify-center transition-colors">
+                  <FiInstagram className="w-5 h-5" />
+                </a>
+              )}
+              {settings?.socialMedia?.twitter && (
+                <a href={settings.socialMedia.twitter} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-700 hover:bg-primary-pink-dark flex items-center justify-center transition-colors">
+                  <FiTwitter className="w-5 h-5" />
+                </a>
+              )}
+              {settings?.socialMedia?.pinterest && (
                 <a href={settings.socialMedia.pinterest} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-gray-700 hover:bg-primary-pink-dark flex items-center justify-center transition-colors">
                   <span className="text-lg">📌</span>
                 </a>
@@ -82,7 +88,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-primary-pink-dark">Quick Links</h3>
             <ul className="space-y-2">
-              {settings.quickLinks.map((link, index) => (
+              {(settings?.quickLinks || []).map((link, index) => (
                 <li key={index}>
                   <Link href={link.url} className="text-gray-300 hover:text-primary-pink transition-colors">
                     {link.label}
@@ -113,24 +119,32 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-primary-pink-dark">Contact Info</h3>
             <ul className="space-y-3 text-gray-300 text-sm">
-              <li className="flex items-start space-x-2">
-                <span>📞</span>
-                <span>{settings.contactInfo.phone}</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <span>📧</span>
-                <a href={`mailto:${settings.contactInfo.email}`} className="hover:text-primary-pink transition-colors">
-                  {settings.contactInfo.email}
-                </a>
-              </li>
-              <li className="flex items-start space-x-2">
-                <span>📍</span>
-                <span>{settings.contactInfo.address}</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <span>🕐</span>
-                <span>{settings.contactInfo.hours}</span>
-              </li>
+              {settings?.contactInfo?.phone && (
+                <li className="flex items-start space-x-2">
+                  <span>📞</span>
+                  <span>{settings.contactInfo.phone}</span>
+                </li>
+              )}
+              {settings?.contactInfo?.email && (
+                <li className="flex items-start space-x-2">
+                  <span>📧</span>
+                  <a href={`mailto:${settings.contactInfo.email}`} className="hover:text-primary-pink transition-colors">
+                    {settings.contactInfo.email}
+                  </a>
+                </li>
+              )}
+              {settings?.contactInfo?.address && (
+                <li className="flex items-start space-x-2">
+                  <span>📍</span>
+                  <span>{settings.contactInfo.address}</span>
+                </li>
+              )}
+              {settings?.contactInfo?.hours && (
+                <li className="flex items-start space-x-2">
+                  <span>🕐</span>
+                  <span>{settings.contactInfo.hours}</span>
+                </li>
+              )}
             </ul>
           </div>
         </div>
@@ -138,7 +152,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-gray-700 pt-8 text-center">
           <p className="text-gray-400 text-sm">
-            {settings.copyright}
+            {settings?.copyright || 'Copyright © 2024 Momma & Me. All rights reserved.'}
           </p>
         </div>
       </div>

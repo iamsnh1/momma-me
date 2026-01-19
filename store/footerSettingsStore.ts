@@ -56,10 +56,20 @@ const defaultSettings: FooterSettings = {
 async function fetchFooterSettings(): Promise<FooterSettings | null> {
   try {
     const response = await fetch('/api/footer')
+    
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text()
+      console.error('Non-JSON response from footer API:', text.substring(0, 200))
+      return null
+    }
+    
     const data = await response.json()
     if (data.success && data.settings) {
       return data.settings
     }
+    // If settings is null, that's okay - means no settings saved yet
     return null
   } catch (error) {
     console.error('Error fetching footer settings from API:', error)

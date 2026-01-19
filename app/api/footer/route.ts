@@ -4,13 +4,13 @@ import { getFooterSettings, updateFooterSettings } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
     const settings = await getFooterSettings()
-    return NextResponse.json({ success: true, settings })
+    // Always return success, even if settings is null (means no settings saved yet)
+    return NextResponse.json({ success: true, settings: settings || null })
   } catch (error: any) {
     console.error('Error fetching footer settings:', error)
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch footer settings' },
-      { status: 500 }
-    )
+    // Return success with null settings instead of error
+    // This allows the frontend to use default settings
+    return NextResponse.json({ success: true, settings: null })
   }
 }
 
