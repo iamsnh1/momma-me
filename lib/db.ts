@@ -68,7 +68,19 @@ export async function loadDatabase(): Promise<Database> {
     if (existsSync(DB_FILE)) {
       const data = await readFile(DB_FILE, 'utf-8')
       if (data && data.trim()) {
-        return JSON.parse(data)
+        const parsed = JSON.parse(data)
+        // Ensure all required fields exist with correct types
+        const db: Database = {
+          products: Array.isArray(parsed.products) ? parsed.products : [],
+          images: Array.isArray(parsed.images) ? parsed.images : [],
+          banners: Array.isArray(parsed.banners) ? parsed.banners : [],
+          categories: Array.isArray(parsed.categories) ? parsed.categories : [],
+          footerSettings: parsed.footerSettings || null,
+          settings: parsed.settings || null,
+          trustBadges: Array.isArray(parsed.trustBadges) ? parsed.trustBadges : [],
+          pages: Array.isArray(parsed.pages) ? parsed.pages : []
+        }
+        return db
       }
     }
   } catch (e) {
@@ -76,7 +88,7 @@ export async function loadDatabase(): Promise<Database> {
     // Return empty database if file doesn't exist or can't be read
   }
   // Return empty database as fallback
-  const defaultDb = { 
+  const defaultDb: Database = { 
     products: [], 
     images: [], 
     banners: [], 
