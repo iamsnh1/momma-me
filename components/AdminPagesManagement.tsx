@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FiEdit, FiExternalLink, FiCheck, FiX } from 'react-icons/fi'
+import { FiEdit, FiExternalLink, FiCheck, FiX, FiRefreshCw } from 'react-icons/fi'
 import Link from 'next/link'
 
 interface Page {
@@ -44,21 +44,55 @@ const defaultPages: Page[] = [
 ]
 
 export default function AdminPagesManagement() {
-  const [pages, setPages] = useState<Page[]>(defaultPages)
+  const [pages, setPages] = useState<Page[]>([])
   const [editingPage, setEditingPage] = useState<Page | null>(null)
   const [editedContent, setEditedContent] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  // Load pages from API
+  const loadPages = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/pages')
+      const data = await response.json()
+      
+      if (data.success && data.pages && data.pages.length > 0) {
+        setPages(data.pages)
+      } else {
+        // Initialize with default pages if database is empty
+        await initializeDefaultPages()
+      }
+    } catch (error) {
+      console.error('Error loading pages:', error)
+      // Initialize with default pages on error
+      await initializeDefaultPages()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Initialize default pages in database
+  const initializeDefaultPages = async () => {
+    try {
+      const promises = defaultPages.map(page =>
+        fetch('/api/pages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(page)
+        })
+      )
+      await Promise.all(promises)
+      setPages(defaultPages)
+    } catch (error) {
+      console.error('Error initializing pages:', error)
+      // Fallback to default pages in state
+      setPages(defaultPages)
+    }
+  }
 
   useEffect(() => {
-    // Load pages from localStorage or use defaults
-    const savedPages = localStorage.getItem('momma-me-pages')
-    if (savedPages) {
-      try {
-        const parsed = JSON.parse(savedPages)
-        setPages(parsed)
-      } catch (e) {
-        console.error('Error loading pages:', e)
-      }
-    }
+    loadPages()
   }, [])
 
   const handleEdit = (page: Page) => {
@@ -66,21 +100,64 @@ export default function AdminPagesManagement() {
     setEditedContent(page.content)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingPage) return
 
-    const updatedPages = pages.map(p =>
-      p.id === editingPage.id ? { ...p, content: editedContent } : p
-    )
-    setPages(updatedPages)
-    localStorage.setItem('momma-me-pages', JSON.stringify(updatedPages))
-    setEditingPage(null)
-    setEditedContent('')
+    try {
+      setSaving(true)
+      const response = await fetch(`/api/pages/${editingPage.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editingPage.title,
+          path: editingPage.path,
+          description: editingPage.description,
+          content: editedContent
+        })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        // Update local state
+        const updatedPages = pages.map(p =>
+          p.id === editingPage.id ? { ...p, content: editedContent } : p
+        )
+        setPages(updatedPages)
+        setEditingPage(null)
+        setEditedContent('')
+        alert('✅ Page updated successfully!')
+      } else {
+        alert(`❌ Error: ${data.error || 'Failed to update page'}`)
+      }
+    } catch (error: any) {
+      console.error('Error saving page:', error)
+      alert(`❌ Error: ${error.message || 'Failed to save page'}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleCancel = () => {
     setEditingPage(null)
     setEditedContent('')
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Pages Management</h1>
+            <p className="text-gray-600 mt-2">Manage your website pages content</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <FiRefreshCw className="w-8 h-8 mx-auto mb-4 text-purple animate-spin" />
+          <p className="text-gray-600">Loading pages...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -90,66 +167,85 @@ export default function AdminPagesManagement() {
           <h1 className="text-3xl font-bold text-gray-900">Pages Management</h1>
           <p className="text-gray-600 mt-2">Manage your website pages content</p>
         </div>
+        <button
+          onClick={loadPages}
+          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700 flex items-center space-x-2"
+        >
+          <FiRefreshCw className="w-4 h-4" />
+          <span>Refresh</span>
+        </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Page
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Path
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {pages.map((page) => (
-                <tr key={page.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{page.title}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                      {page.path}
-                    </code>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-600">{page.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <Link
-                        href={page.path}
-                        target="_blank"
-                        className="text-purple hover:text-purple-dark flex items-center space-x-1"
-                      >
-                        <FiExternalLink className="w-4 h-4" />
-                        <span>View</span>
-                      </Link>
-                      <button
-                        onClick={() => handleEdit(page)}
-                        className="text-primary-pink-dark hover:text-primary-pink flex items-center space-x-1"
-                      >
-                        <FiEdit className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {pages.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <p className="text-gray-600 mb-4">No pages found. Initializing default pages...</p>
+          <button
+            onClick={initializeDefaultPages}
+            className="px-4 py-2 bg-purple text-white rounded-lg hover:bg-purple-dark"
+          >
+            Initialize Default Pages
+          </button>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Page
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Path
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {pages.map((page) => (
+                  <tr key={page.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{page.title}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                        {page.path}
+                      </code>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">{page.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <Link
+                          href={page.path}
+                          target="_blank"
+                          className="text-purple hover:text-purple-dark flex items-center space-x-1"
+                        >
+                          <FiExternalLink className="w-4 h-4" />
+                          <span>View</span>
+                        </Link>
+                        <button
+                          onClick={() => handleEdit(page)}
+                          className="text-primary-pink-dark hover:text-primary-pink flex items-center space-x-1"
+                        >
+                          <FiEdit className="w-4 h-4" />
+                          <span>Edit</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {editingPage && (
@@ -185,17 +281,28 @@ export default function AdminPagesManagement() {
             <div className="p-6 border-t border-gray-200 flex items-center justify-end space-x-3">
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                disabled={saving}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center space-x-2 disabled:opacity-50"
               >
                 <FiX className="w-4 h-4" />
                 <span>Cancel</span>
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-purple text-white rounded-lg hover:bg-purple-dark flex items-center space-x-2"
+                disabled={saving}
+                className="px-4 py-2 bg-purple text-white rounded-lg hover:bg-purple-dark flex items-center space-x-2 disabled:opacity-50"
               >
-                <FiCheck className="w-4 h-4" />
-                <span>Save Changes</span>
+                {saving ? (
+                  <>
+                    <FiRefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiCheck className="w-4 h-4" />
+                    <span>Save Changes</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

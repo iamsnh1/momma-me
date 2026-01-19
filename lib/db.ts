@@ -22,6 +22,7 @@ interface Database {
   footerSettings: any
   settings: any
   trustBadges: any[]
+  pages: any[]
 }
 
 let db: Database = {
@@ -31,7 +32,8 @@ let db: Database = {
   categories: [],
   footerSettings: null,
   settings: null,
-  trustBadges: []
+  trustBadges: [],
+  pages: []
 }
 
 // For now, we'll use a JSON file as the database
@@ -81,7 +83,8 @@ export async function loadDatabase(): Promise<Database> {
     categories: [],
     footerSettings: null,
     settings: null,
-    trustBadges: []
+    trustBadges: [],
+    pages: []
   }
   
   // If database file doesn't exist, ensure it has the right structure
@@ -413,6 +416,75 @@ export async function deleteTrustBadge(id: string) {
     await saveDatabase(db)
   } catch (error: any) {
     console.error('Error in deleteTrustBadge:', error)
+    // Don't throw - operation should succeed even if file write fails
+  }
+}
+
+// Page operations
+export async function getPages() {
+  const db = await loadDatabase()
+  return db.pages || []
+}
+
+export async function getPage(id: string) {
+  const db = await loadDatabase()
+  return db.pages.find(p => p.id === id)
+}
+
+export async function getPageByPath(path: string) {
+  const db = await loadDatabase()
+  return db.pages.find(p => p.path === path)
+}
+
+export async function createPage(page: any) {
+  try {
+    const db = await loadDatabase()
+    const newPage = {
+      ...page,
+      id: page.id || `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    db.pages.push(newPage)
+    await saveDatabase(db)
+    return newPage
+  } catch (error: any) {
+    console.error('Error in createPage:', error)
+    // Return the page anyway
+    return {
+      ...page,
+      id: page.id || `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  }
+}
+
+export async function updatePage(id: string, updates: any) {
+  try {
+    const db = await loadDatabase()
+    const index = db.pages.findIndex(p => p.id === id)
+    if (index === -1) throw new Error('Page not found')
+    db.pages[index] = {
+      ...db.pages[index],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    }
+    await saveDatabase(db)
+    return db.pages[index]
+  } catch (error: any) {
+    console.error('Error in updatePage:', error)
+    throw error // Re-throw for API to handle
+  }
+}
+
+export async function deletePage(id: string) {
+  try {
+    const db = await loadDatabase()
+    db.pages = db.pages.filter(p => p.id !== id)
+    await saveDatabase(db)
+  } catch (error: any) {
+    console.error('Error in deletePage:', error)
     // Don't throw - operation should succeed even if file write fails
   }
 }
