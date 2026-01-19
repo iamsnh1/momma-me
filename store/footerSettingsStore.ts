@@ -16,83 +16,104 @@ export interface FooterSettings {
     hours: string
   }
   copyright: string
+  updatedAt?: string
 }
 
-const STORAGE_KEY = 'momma-me-footer-settings'
+interface FooterSettingsStore {
+  settings: FooterSettings
+  isLoading: boolean
+  error: string | null
+  initialize: () => Promise<void>
+  updateSettings: (settings: Partial<FooterSettings>) => Promise<void>
+  resetSettings: () => void
+}
 
+// Default footer settings
 const defaultSettings: FooterSettings = {
-  companyDescription: 'Your trusted destination for premium baby essentials from birth to 3 years. We offer a comprehensive collection of safe, high-quality products including feeding supplies, clothing, toys, nursery furniture, strollers, car seats, baby care items, and developmental toys.',
+  companyDescription: 'Your trusted partner for premium baby and mom products.',
   quickLinks: [
-    { label: 'Home', url: '/' },
-    { label: 'About Us', url: '#about' },
-    { label: 'Gallery', url: '#gallery' },
-    { label: 'Contact Us', url: '#contact' }
+    { label: 'About Us', url: '/about' },
+    { label: 'Contact', url: '/contact' },
+    { label: 'Shipping', url: '/shipping' },
+    { label: 'Returns', url: '/returns' }
   ],
   socialMedia: {
-    facebook: '#',
-    instagram: '#',
-    twitter: '#',
-    pinterest: '#'
+    facebook: '',
+    instagram: '',
+    twitter: '',
+    pinterest: ''
   },
   contactInfo: {
-    phone: '+1 (555) 123-4567',
-    email: 'Momma&Me@example.com',
-    address: '123 Baby Street, City, State 12345',
+    phone: '',
+    email: '',
+    address: '',
     hours: 'Mon-Fri: 9AM-6PM EST'
   },
   copyright: 'Copyright © 2024 Momma & Me. All rights reserved.'
 }
 
-const loadSettings = (): FooterSettings => {
-  if (typeof window === 'undefined') return defaultSettings
+// Fetch footer settings from API
+async function fetchFooterSettings(): Promise<FooterSettings | null> {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      return { ...defaultSettings, ...parsed }
+    const response = await fetch('/api/footer')
+    const data = await response.json()
+    if (data.success && data.settings) {
+      return data.settings
     }
-  } catch (e) {
-    console.error('Error loading footer settings from localStorage:', e)
+    return null
+  } catch (error) {
+    console.error('Error fetching footer settings from API:', error)
+    return null
   }
-  return defaultSettings
-}
-
-const saveSettings = (settings: FooterSettings) => {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-  } catch (e) {
-    console.error('Error saving footer settings to localStorage:', e)
-  }
-}
-
-interface FooterSettingsStore {
-  settings: FooterSettings
-  initialize: () => void
-  updateSettings: (settings: Partial<FooterSettings>) => void
-  resetSettings: () => void
 }
 
 export const useFooterSettingsStore = create<FooterSettingsStore>((set, get) => ({
-  settings: loadSettings(),
+  settings: defaultSettings,
+  isLoading: false,
+  error: null,
 
-  initialize: () => {
-    const loaded = loadSettings()
-    set({ settings: loaded })
+  initialize: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const settings = await fetchFooterSettings()
+      if (settings) {
+        set({ settings, isLoading: false })
+      } else {
+        set({ settings: defaultSettings, isLoading: false })
+      }
+    } catch (error: any) {
+      console.error('Error initializing footer settings:', error)
+      set({ error: error.message, isLoading: false, settings: defaultSettings })
+    }
   },
 
-  updateSettings: (newSettings) => {
-    const updated = { ...get().settings, ...newSettings }
-    set({ settings: updated })
-    saveSettings(updated)
+  updateSettings: async (updates) => {
+    try {
+      const currentSettings = get().settings
+      const newSettings = { ...currentSettings, ...updates }
+      
+      const response = await fetch('/api/footer', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings)
+      })
+      const data = await response.json()
+      if (data.success && data.settings) {
+        set({ settings: data.settings })
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('footerSettingsUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to update footer settings')
+      }
+    } catch (error: any) {
+      console.error('Error updating footer settings:', error)
+      throw error
+    }
   },
 
   resetSettings: () => {
     set({ settings: defaultSettings })
-    saveSettings(defaultSettings)
-  },
+  }
 }))
-
-
-
-

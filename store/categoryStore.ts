@@ -1,140 +1,140 @@
 import { create } from 'zustand'
-import { categories as initialCategories } from '@/data/products'
 
 export interface Category {
   id: string
   name: string
-  icon: string
-  description: string
-  displayOrder?: number
-  active?: boolean
+  slug?: string
+  description?: string
+  image?: string
+  icon?: string
+  parentId?: string
   parentCategory?: string
-}
-
-const STORAGE_KEY = 'momma-me-categories'
-
-// Track if we've ever saved data to localStorage
-const hasSavedCategories = (): boolean => {
-  if (typeof window === 'undefined') return false
-  return localStorage.getItem(`${STORAGE_KEY}_initialized`) === 'true'
-}
-
-// Load categories from localStorage or use initial categories
-const loadCategories = (): Category[] => {
-  if (typeof window === 'undefined') return initialCategories
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-    // Only return initial categories if we've NEVER saved data before
-    if (!hasSavedCategories()) {
-      return initialCategories
-    }
-    return []
-  } catch (e) {
-    console.error('Error loading categories from localStorage:', e)
-    if (hasSavedCategories()) {
-      return []
-    }
-    return initialCategories
-  }
-}
-
-// Save categories to localStorage with backup
-const saveCategories = (categories: Category[]) => {
-  if (typeof window === 'undefined') return
-  try {
-    // Create backup before saving
-    const backupKey = `${STORAGE_KEY}_backup_${Date.now()}`
-    const currentData = localStorage.getItem(STORAGE_KEY)
-    if (currentData) {
-      localStorage.setItem(backupKey, currentData)
-      // Clean up old backups (keep only last 3)
-      const backupKeys = Object.keys(localStorage)
-        .filter(key => key.startsWith(`${STORAGE_KEY}_backup_`))
-        .sort()
-        .reverse()
-        .slice(3)
-      backupKeys.forEach(key => localStorage.removeItem(key))
-    }
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(categories))
-    localStorage.setItem(`${STORAGE_KEY}_initialized`, 'true')
-    localStorage.setItem(`${STORAGE_KEY}_lastSaved`, new Date().toISOString())
-    console.log(`✅ Saved ${categories.length} categories to localStorage at ${new Date().toLocaleString()}`)
-  } catch (e) {
-    console.error('Error saving categories to localStorage:', e)
-    throw e
-  }
+  active: boolean
+  position?: number
+  displayOrder?: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 interface CategoryStore {
   categories: Category[]
-  initialize: () => void
-  addCategory: (category: Category) => void
-  updateCategory: (id: string, category: Partial<Category>) => void
-  deleteCategory: (id: string) => void
-  getCategory: (id: string) => Category | undefined
-  getCategoryByName: (name: string) => Category | undefined
+  isLoading: boolean
+  error: string | null
+  initialize: () => Promise<void>
+  addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  updateCategory: (id: string, category: Partial<Category>) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
   getActiveCategories: () => Category[]
-  getAllCategories: () => Category[]
+  getCategory: (id: string) => Category | undefined
+}
+
+// Fetch categories from API
+async function fetchCategories(): Promise<Category[]> {
+  try {
+    const response = await fetch('/api/categories')
+    const data = await response.json()
+    if (data.success && data.categories) {
+      return data.categories
+    }
+    return []
+  } catch (error) {
+    console.error('Error fetching categories from API:', error)
+    return []
+  }
 }
 
 export const useCategoryStore = create<CategoryStore>((set, get) => ({
-  categories: loadCategories(),
+  categories: [],
+  isLoading: false,
+  error: null,
 
-  initialize: () => {
-    // NEVER overwrite existing data - only load if store is empty
-    const currentCategories = get().categories
-    if (currentCategories.length === 0) {
-      const loaded = loadCategories()
-      if (loaded.length > 0) {
-        set({ categories: loaded })
-      }
+  initialize: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const categories = await fetchCategories()
+      set({ categories, isLoading: false })
+    } catch (error: any) {
+      console.error('Error initializing categories:', error)
+      set({ error: error.message, isLoading: false })
     }
-    // If we already have categories, keep them - don't reload
   },
 
-  addCategory: (category) => {
-    const newCategories = [...get().categories, category]
-    set({ categories: newCategories })
-    saveCategories(newCategories)
+  addCategory: async (category) => {
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(category)
+      })
+      const data = await response.json()
+      if (data.success && data.category) {
+        set((state) => ({ categories: [...state.categories, data.category] }))
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('categoriesUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to create category')
+      }
+    } catch (error: any) {
+      console.error('Error adding category:', error)
+      throw error
+    }
   },
 
-  updateCategory: (id, updatedCategory) => {
-    const newCategories = get().categories.map(c =>
-      c.id === id ? { ...c, ...updatedCategory } : c
-    )
-    set({ categories: newCategories })
-    saveCategories(newCategories)
+  updateCategory: async (id, updates) => {
+    try {
+      const response = await fetch(`/api/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+      const data = await response.json()
+      if (data.success && data.category) {
+        set((state) => ({
+          categories: state.categories.map(c => c.id === id ? data.category : c)
+        }))
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('categoriesUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to update category')
+      }
+    } catch (error: any) {
+      console.error('Error updating category:', error)
+      throw error
+    }
   },
 
-  deleteCategory: (id) => {
-    const newCategories = get().categories.filter(c => c.id !== id)
-    set({ categories: newCategories })
-    saveCategories(newCategories)
+  deleteCategory: async (id) => {
+    try {
+      const response = await fetch(`/api/categories/${id}`, {
+        method: 'DELETE'
+      })
+      const data = await response.json()
+      if (data.success) {
+        set((state) => ({
+          categories: state.categories.filter(c => c.id !== id)
+        }))
+        // Dispatch event for other tabs/windows
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('categoriesUpdated'))
+        }
+      } else {
+        throw new Error(data.error || 'Failed to delete category')
+      }
+    } catch (error: any) {
+      console.error('Error deleting category:', error)
+      throw error
+    }
+  },
+
+  getActiveCategories: () => {
+    return get().categories.filter(c => c.active).sort((a, b) => a.position - b.position)
   },
 
   getCategory: (id) => {
     return get().categories.find(c => c.id === id)
-  },
-
-  getCategoryByName: (name) => {
-    return get().categories.find(c => c.name === name)
-  },
-
-  getActiveCategories: () => {
-    return get().categories.filter(c => c.active !== false).sort((a, b) => 
-      (a.displayOrder || 999) - (b.displayOrder || 999)
-    )
-  },
-
-  getAllCategories: () => {
-    return get().categories
-  },
+  }
 }))
-

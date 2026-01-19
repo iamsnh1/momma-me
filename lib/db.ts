@@ -19,13 +19,19 @@ interface Database {
   images: any[]
   banners: any[]
   categories: any[]
+  footerSettings: any
+  settings: any
+  trustBadges: any[]
 }
 
 let db: Database = {
   products: [],
   images: [],
   banners: [],
-  categories: []
+  categories: [],
+  footerSettings: null,
+  settings: null,
+  trustBadges: []
 }
 
 // For now, we'll use a JSON file as the database
@@ -68,7 +74,15 @@ export async function loadDatabase(): Promise<Database> {
     // Return empty database if file doesn't exist or can't be read
   }
   // Return empty database as fallback
-  return { products: [], images: [], banners: [], categories: [] }
+  return { 
+    products: [], 
+    images: [], 
+    banners: [], 
+    categories: [],
+    footerSettings: null,
+    settings: null,
+    trustBadges: []
+  }
 }
 
 export async function saveDatabase(data: Database): Promise<void> {
@@ -182,3 +196,115 @@ export async function deleteBanner(id: string) {
   await saveDatabase(db)
 }
 
+// Category operations
+export async function getCategories() {
+  const db = await loadDatabase()
+  return db.categories
+}
+
+export async function getCategory(id: string) {
+  const db = await loadDatabase()
+  return db.categories.find(c => c.id === id)
+}
+
+export async function createCategory(category: any) {
+  const db = await loadDatabase()
+  const newCategory = {
+    ...category,
+    id: category.id || `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+  db.categories.push(newCategory)
+  await saveDatabase(db)
+  return newCategory
+}
+
+export async function updateCategory(id: string, updates: any) {
+  const db = await loadDatabase()
+  const index = db.categories.findIndex(c => c.id === id)
+  if (index === -1) throw new Error('Category not found')
+  db.categories[index] = {
+    ...db.categories[index],
+    ...updates,
+    updatedAt: new Date().toISOString()
+  }
+  await saveDatabase(db)
+  return db.categories[index]
+}
+
+export async function deleteCategory(id: string) {
+  const db = await loadDatabase()
+  db.categories = db.categories.filter(c => c.id !== id)
+  await saveDatabase(db)
+}
+
+// Footer settings operations
+export async function getFooterSettings() {
+  const db = await loadDatabase()
+  return db.footerSettings || null
+}
+
+export async function updateFooterSettings(settings: any) {
+  const db = await loadDatabase()
+  db.footerSettings = {
+    ...settings,
+    updatedAt: new Date().toISOString()
+  }
+  await saveDatabase(db)
+  return db.footerSettings
+}
+
+// Settings operations
+export async function getSettings() {
+  const db = await loadDatabase()
+  return db.settings || null
+}
+
+export async function updateSettings(settings: any) {
+  const db = await loadDatabase()
+  db.settings = {
+    ...settings,
+    updatedAt: new Date().toISOString()
+  }
+  await saveDatabase(db)
+  return db.settings
+}
+
+// Trust badge operations
+export async function getTrustBadges() {
+  const db = await loadDatabase()
+  return db.trustBadges
+}
+
+export async function createTrustBadge(badge: any) {
+  const db = await loadDatabase()
+  const newBadge = {
+    ...badge,
+    id: badge.id || `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+  db.trustBadges.push(newBadge)
+  await saveDatabase(db)
+  return newBadge
+}
+
+export async function updateTrustBadge(id: string, updates: any) {
+  const db = await loadDatabase()
+  const index = db.trustBadges.findIndex(b => b.id === id)
+  if (index === -1) throw new Error('Trust badge not found')
+  db.trustBadges[index] = {
+    ...db.trustBadges[index],
+    ...updates,
+    updatedAt: new Date().toISOString()
+  }
+  await saveDatabase(db)
+  return db.trustBadges[index]
+}
+
+export async function deleteTrustBadge(id: string) {
+  const db = await loadDatabase()
+  db.trustBadges = db.trustBadges.filter(b => b.id !== id)
+  await saveDatabase(db)
+}

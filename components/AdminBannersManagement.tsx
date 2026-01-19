@@ -61,7 +61,7 @@ export default function AdminBannersManagement() {
     })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title || !formData.image) {
       alert('Please fill in required fields (Title and Image)')
       return
@@ -77,20 +77,21 @@ export default function AdminBannersManagement() {
       // Verify image is actually set
       console.log('Saving banner with image:', formData.image ? (formData.image.substring(0, 50) + '...') : 'NO IMAGE')
       
+      const bannerData = {
+        ...formData,
+        active: formData.isActive ?? formData.active ?? true
+      }
+      
       if (editingId) {
-        updateBanner(editingId, formData)
+        await updateBanner(editingId, bannerData)
         console.log('Banner updated:', editingId)
       } else {
-        addBanner(formData as Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>)
+        await addBanner(bannerData as Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>)
         console.log('Banner added')
       }
 
-      // Re-initialize to refresh the store
-      initialize()
-      
-      // Verify it was saved
-      const savedBanners = typeof window !== 'undefined' ? localStorage.getItem('momma-me-banners') : null
-      console.log('Banners saved to localStorage:', savedBanners ? 'Yes' : 'No')
+      // Re-initialize to refresh the store from database
+      await initialize()
       
       // Dispatch custom event to notify other components
       if (typeof window !== 'undefined') {
@@ -113,7 +114,7 @@ export default function AdminBannersManagement() {
       })
       
       // Show success message
-      alert('✅ Banner saved successfully! Changes will appear on the homepage. Refresh the homepage to see updates.')
+      alert('✅ Banner saved successfully to database! All users will see this banner.')
     } catch (error: any) {
       alert(`❌ Error saving banner: ${error.message || 'Unknown error'}\n\nPlease try:\n- Using a smaller image\n- Compressing the image before uploading\n- Using an image URL instead`)
       console.error('Error saving banner:', error)
@@ -137,11 +138,11 @@ export default function AdminBannersManagement() {
     })
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this banner?')) {
       try {
-        deleteBanner(id)
-        initialize()
+        await deleteBanner(id)
+        await initialize()
         // Dispatch custom event to notify other components
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('bannerUpdated'))
@@ -154,12 +155,13 @@ export default function AdminBannersManagement() {
     }
   }
 
-  const toggleActive = (id: string) => {
+  const toggleActive = async (id: string) => {
     const banner = banners.find(b => b.id === id)
     if (banner) {
       try {
-        updateBanner(id, { isActive: !banner.isActive })
-        initialize()
+        const newActiveState = !(banner.isActive ?? banner.active)
+        await updateBanner(id, { isActive: newActiveState, active: newActiveState })
+        await initialize()
         // Dispatch custom event to notify other components
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('bannerUpdated'))
@@ -171,7 +173,7 @@ export default function AdminBannersManagement() {
     }
   }
 
-  const movePosition = (id: string, direction: 'up' | 'down') => {
+  const movePosition = async (id: string, direction: 'up' | 'down') => {
     const banner = banners.find(b => b.id === id)
     if (!banner) return
 
@@ -180,15 +182,15 @@ export default function AdminBannersManagement() {
     
     if (direction === 'up' && currentIndex > 0) {
       const prevBanner = sortedBanners[currentIndex - 1]
-      updateBanner(id, { position: prevBanner.position })
-      updateBanner(prevBanner.id, { position: banner.position })
+      await updateBanner(id, { position: prevBanner.position })
+      await updateBanner(prevBanner.id, { position: banner.position })
     } else if (direction === 'down' && currentIndex < sortedBanners.length - 1) {
       const nextBanner = sortedBanners[currentIndex + 1]
-      updateBanner(id, { position: nextBanner.position })
-      updateBanner(nextBanner.id, { position: banner.position })
+      await updateBanner(id, { position: nextBanner.position })
+      await updateBanner(nextBanner.id, { position: banner.position })
     }
     
-    initialize()
+    await initialize()
     // Dispatch custom event to notify other components
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('bannerUpdated'))
