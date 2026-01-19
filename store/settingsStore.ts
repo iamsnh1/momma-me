@@ -166,6 +166,15 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings)
       })
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response from API:', text.substring(0, 200))
+        throw new Error('Server returned an error page instead of JSON. Check server logs.')
+      }
+      
       const data = await response.json()
       if (data.success && data.settings) {
         set({ settings: data.settings })

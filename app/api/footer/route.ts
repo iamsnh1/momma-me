@@ -21,9 +21,22 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true, settings })
   } catch (error: any) {
     console.error('Error updating footer settings:', error)
+    // Return proper JSON even on error
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to update footer settings' },
       { status: 500 }
     )
   }
+}
+
+// Handle OPTIONS for CORS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
 }
