@@ -55,17 +55,26 @@ export default function AdminPagesManagement() {
     try {
       setLoading(true)
       const response = await fetch('/api/pages')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
+      console.log('Pages API response:', data)
       
       if (data.success && data.pages && data.pages.length > 0) {
+        console.log(`Loaded ${data.pages.length} pages from database`)
         setPages(data.pages)
       } else {
+        console.log('No pages in database, initializing defaults...')
         // Initialize with default pages if database is empty
         await initializeDefaultPages()
       }
     } catch (error) {
       console.error('Error loading pages:', error)
-      // Initialize with default pages on error
+      // Show default pages immediately, then try to initialize
+      setPages(defaultPages)
       await initializeDefaultPages()
     } finally {
       setLoading(false)
@@ -75,15 +84,29 @@ export default function AdminPagesManagement() {
   // Initialize default pages in database
   const initializeDefaultPages = async () => {
     try {
-      const promises = defaultPages.map(page =>
-        fetch('/api/pages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(page)
-        })
+      console.log('Initializing default pages...')
+      const results = await Promise.allSettled(
+        defaultPages.map(page =>
+          fetch('/api/pages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(page)
+          }).then(res => res.json())
+        )
       )
-      await Promise.all(promises)
-      setPages(defaultPages)
+      
+      console.log('Initialization results:', results)
+      
+      // Reload pages after initialization
+      const response = await fetch('/api/pages')
+      const data = await response.json()
+      
+      if (data.success && data.pages && data.pages.length > 0) {
+        setPages(data.pages)
+      } else {
+        // Fallback to default pages in state
+        setPages(defaultPages)
+      }
     } catch (error) {
       console.error('Error initializing pages:', error)
       // Fallback to default pages in state
