@@ -44,7 +44,7 @@ const defaultPages: Page[] = [
 ]
 
 export default function AdminPagesManagement() {
-  const [pages, setPages] = useState<Page[]>([])
+  const [pages, setPages] = useState<Page[]>(defaultPages) // Start with default pages
   const [editingPage, setEditingPage] = useState<Page | null>(null)
   const [editedContent, setEditedContent] = useState('')
   const [loading, setLoading] = useState(true)
